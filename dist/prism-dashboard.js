@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.2.6
+ * @version 1.2.7
  * @author BangerTech
  */
 
@@ -22403,8 +22403,12 @@ class PrismEnergyCard extends HTMLElement {
       header_icon: "mdi:solar-power-variant",
       solar_power: "",
       grid_power: "",
+      grid_import: "",
+      grid_export: "",
       battery_soc: "",
       battery_power: "",
+      battery_charge: "",
+      battery_discharge: "",
       home_consumption: "",
       ev_power: "",
       autarky: "",
@@ -22517,8 +22521,17 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "grid_power",
-          label: "Grid Power (positive=import, negative=export)",
-          required: true,
+          label: "Grid Power – combined (optional if import/export set; +import, −export)",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "grid_import",
+          label: "Grid Import Power (optional, separate sensor)",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "grid_export",
+          label: "Grid Export Power (optional, separate sensor)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -22529,8 +22542,17 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "battery_power",
-          label: "Battery Power (positive=discharge, negative=charge)",
-          required: true,
+          label: "Battery Power – combined (optional if charge/discharge set; +discharge, −charge)",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "battery_charge",
+          label: "Battery Charge Power (optional, separate sensor)",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "battery_discharge",
+          label: "Battery Discharge Power (optional, separate sensor)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -22933,8 +22955,12 @@ class PrismEnergyCard extends HTMLElement {
       header_icon: config.header_icon || "mdi:solar-power-variant",
       solar_power: config.solar_power || "",
       grid_power: config.grid_power || "",
+      grid_import: config.grid_import || "",
+      grid_export: config.grid_export || "",
       battery_soc: config.battery_soc || "",
       battery_power: config.battery_power || "",
+      battery_charge: config.battery_charge || "",
+      battery_discharge: config.battery_discharge || "",
       home_consumption: config.home_consumption || "",
       ev_power: config.ev_power || "",
       autarky: config.autarky || "",
@@ -23063,25 +23089,24 @@ class PrismEnergyCard extends HTMLElement {
 
     // Use _getStateInWatts for power sensors to handle kW units (e.g. from evcc)
     const solarPower = this._getStateInWatts(this._config.solar_power, 0);
-    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
+    const gridPowerDisplay = this._getGridPowerDisplay();
     const batterySoc = this._getState(this._config.battery_soc, 0); // SOC is percentage, not power
-    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
     const homeConsumption = this._getStateInWatts(this._config.home_consumption, 0);
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     const autarky = this._getState(this._config.autarky, 0); // Autarky is percentage
 
     // Determine states for labels
     const isSolarActive = solarPower > 50;
-    const isGridImport = gridPower > 50;
-    const isGridExport = gridPower < -50;
-    const isBatteryCharging = batteryPower < -50;
-    const isBatteryDischarging = batteryPower > 50;
+    const isGridImport = this._isGridImport();
+    const isGridExport = this._isGridExport();
+    const isBatteryCharging = this._isBatteryCharging();
+    const isBatteryDischarging = this._isBatteryDischarging();
     const isEvCharging = evPower > 50;
     const hasBattery = !!this._config.battery_soc;
 
     // Update pill values
     this._updateElement('.pill-solar .pill-val', this._formatPower(solarPower));
-    this._updateElement('.pill-grid .pill-val', this._formatPower(gridPower));
+    this._updateElement('.pill-grid .pill-val', this._formatPower(gridPowerDisplay));
     this._updateElement('.pill-home .pill-val', this._formatPower(homeConsumption));
     if (hasBattery) {
       this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
@@ -23228,13 +23253,12 @@ class PrismEnergyCard extends HTMLElement {
     if (!this.shadowRoot || !this._hass || !this._config.show_details) return;
     
     const solarPower = this._getStateInWatts(this._config.solar_power, 0);
-    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
     const batterySoc = this._getState(this._config.battery_soc, 0);
-    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
     const homeConsumption = this._getStateInWatts(this._config.home_consumption, 0);
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     
-    const isGridExport = gridPower < -50;
+    const isGridImport = this._isGridImport();
+    const isGridExport = this._isGridExport();
     const isEvCharging = evPower > 50;
     const hasEV = !!this._config.ev_power;
     
@@ -23259,17 +23283,13 @@ class PrismEnergyCard extends HTMLElement {
     }
     
     // Update Grid values
-    const gridLabel = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(2) .detail-label');
-    const gridVal = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(2) .detail-val');
-    const gridFill = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(2) .detail-fill');
-    if (gridLabel) gridLabel.textContent = isGridExport ? this._t('export') : this._t('import');
-    if (gridVal) {
-      gridVal.textContent = this._formatPower(gridPower);
-      gridVal.style.color = isGridExport ? colors.battery : '#ef4444';
+    const gridContent = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(2) .detail-content');
+    if (gridContent) {
+      gridContent.innerHTML = this._renderGridDetails(colors);
     }
-    if (gridFill) {
-      gridFill.style.width = `${Math.min(100, (Math.abs(gridPower) / this._config.max_grid_power) * 100)}%`;
-      gridFill.style.background = isGridExport ? colors.battery : '#ef4444';
+    const gridBar = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(2) .detail-bar');
+    if (gridBar) {
+      gridBar.innerHTML = this._renderGridBar(colors, isGridImport, isGridExport);
     }
     
     // Update Consumption values
@@ -23302,14 +23322,9 @@ class PrismEnergyCard extends HTMLElement {
     }
     
     // Update Storage values
-    const storageRows = this.shadowRoot.querySelectorAll('.details-grid .detail-col:nth-child(4) .detail-row');
-    if (storageRows[0]) {
-      const valEl = storageRows[0].querySelector('.detail-val');
-      if (valEl) valEl.textContent = this._formatPower(Math.abs(batteryPower));
-    }
-    if (storageRows[1]) {
-      const valEl = storageRows[1].querySelector('.detail-val');
-      if (valEl) valEl.textContent = `${Math.round(batterySoc)}%`;
+    const storageContent = this.shadowRoot.querySelector('.details-grid .detail-col:nth-child(4) .detail-content');
+    if (storageContent) {
+      storageContent.innerHTML = this._renderStorageDetails(colors, batterySoc);
     }
     
     // Update Storage bar
@@ -23329,16 +23344,14 @@ class PrismEnergyCard extends HTMLElement {
   _updateFlows() {
     // Use _getStateInWatts for power sensors to handle kW units (e.g. from evcc)
     const solarPower = this._getStateInWatts(this._config.solar_power, 0);
-    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
-    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
     const homeConsumption = this._getStateInWatts(this._config.home_consumption, 0);
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
 
     const isSolarActive = solarPower > 50;
-    const isGridImport = gridPower > 50;
-    const isGridExport = gridPower < -50;
-    const isBatteryCharging = batteryPower < -50;
-    const isBatteryDischarging = batteryPower > 50;
+    const isGridImport = this._isGridImport();
+    const isGridExport = this._isGridExport();
+    const isBatteryCharging = this._isBatteryCharging();
+    const isBatteryDischarging = this._isBatteryDischarging();
     const isEvCharging = evPower > 50;
     const hasEV = !!this._config.ev_power;
     const hasBattery = !!this._config.battery_soc;
@@ -23455,6 +23468,125 @@ class PrismEnergyCard extends HTMLElement {
     return val;
   }
 
+  _usesSplitGridSensors() {
+    return !!(this._config.grid_import || this._config.grid_export);
+  }
+
+  _usesSplitBatteryPowerSensors() {
+    return !!(this._config.battery_charge || this._config.battery_discharge);
+  }
+
+  _getGridImportWatts() {
+    if (this._usesSplitGridSensors()) {
+      return this._getStateInWatts(this._config.grid_import, 0);
+    }
+    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
+    return gridPower > 0 ? gridPower : 0;
+  }
+
+  _getGridExportWatts() {
+    if (this._usesSplitGridSensors()) {
+      return this._getStateInWatts(this._config.grid_export, 0);
+    }
+    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
+    return gridPower < 0 ? Math.abs(gridPower) : 0;
+  }
+
+  _getGridPowerSigned() {
+    if (this._usesSplitGridSensors()) {
+      const importW = this._getGridImportWatts();
+      const exportW = this._getGridExportWatts();
+      if (importW > 50) return importW;
+      if (exportW > 50) return -exportW;
+      return 0;
+    }
+    return this._getStateInWatts(this._config.grid_power, 0);
+  }
+
+  _getGridPowerDisplay() {
+    const importW = this._getGridImportWatts();
+    const exportW = this._getGridExportWatts();
+    if (exportW > 50) return exportW;
+    if (importW > 50) return importW;
+    if (this._usesSplitGridSensors()) return Math.max(importW, exportW);
+    return Math.abs(this._getGridPowerSigned());
+  }
+
+  _isGridImport() {
+    if (this._usesSplitGridSensors()) {
+      return this._getGridImportWatts() > 50;
+    }
+    return this._getGridPowerSigned() > 50;
+  }
+
+  _isGridExport() {
+    if (this._usesSplitGridSensors()) {
+      return this._getGridExportWatts() > 50;
+    }
+    return this._getGridPowerSigned() < -50;
+  }
+
+  _getGridPillEntity() {
+    if (this._usesSplitGridSensors()) {
+      if (this._isGridImport()) return this._config.grid_import;
+      if (this._isGridExport()) return this._config.grid_export;
+      return this._config.grid_import || this._config.grid_export;
+    }
+    return this._config.grid_power;
+  }
+
+  _getBatteryChargeWatts() {
+    if (this._usesSplitBatteryPowerSensors()) {
+      return this._getStateInWatts(this._config.battery_charge, 0);
+    }
+    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
+    return batteryPower < 0 ? Math.abs(batteryPower) : 0;
+  }
+
+  _getBatteryDischargeWatts() {
+    if (this._usesSplitBatteryPowerSensors()) {
+      return this._getStateInWatts(this._config.battery_discharge, 0);
+    }
+    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
+    return batteryPower > 0 ? batteryPower : 0;
+  }
+
+  _getBatteryPowerSigned() {
+    if (this._usesSplitBatteryPowerSensors()) {
+      const chargeW = this._getBatteryChargeWatts();
+      const dischargeW = this._getBatteryDischargeWatts();
+      if (dischargeW > 50) return dischargeW;
+      if (chargeW > 50) return -chargeW;
+      return 0;
+    }
+    return this._getStateInWatts(this._config.battery_power, 0);
+  }
+
+  _getBatteryPowerDisplay() {
+    const chargeW = this._getBatteryChargeWatts();
+    const dischargeW = this._getBatteryDischargeWatts();
+    if (this._usesSplitBatteryPowerSensors()) {
+      if (dischargeW > 50) return dischargeW;
+      if (chargeW > 50) return chargeW;
+      return Math.max(chargeW, dischargeW);
+    }
+    return Math.abs(this._getBatteryPowerSigned());
+  }
+
+  _isBatteryCharging() {
+    if (this._usesSplitBatteryPowerSensors()) {
+      return this._getBatteryChargeWatts() > 50;
+    }
+    return this._getBatteryPowerSigned() < -50;
+  }
+
+  _isBatteryDischarging() {
+    if (this._usesSplitBatteryPowerSensors()) {
+      return this._getBatteryDischargeWatts() > 50;
+    }
+    return this._getBatteryPowerSigned() > 50;
+  }
+
   // Helper to format power values
   _formatPower(watts) {
     const absWatts = Math.abs(watts);
@@ -23546,6 +23678,84 @@ class PrismEnergyCard extends HTMLElement {
     });
     html += '</div>';
     return html;
+  }
+
+  _renderGridDetails(colors) {
+    const importW = this._getGridImportWatts();
+    const exportW = this._getGridExportWatts();
+
+    if (this._usesSplitGridSensors()) {
+      return `
+        <div class="detail-row">
+          <span class="detail-label">${this._t('import')}</span>
+          <span class="detail-val" style="color: #ef4444;">${this._formatPower(importW)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">${this._t('export')}</span>
+          <span class="detail-val" style="color: ${colors.battery};">${this._formatPower(exportW)}</span>
+        </div>
+      `;
+    }
+
+    const isExport = this._isGridExport();
+    const displayW = isExport ? exportW : importW;
+    return `
+      <div class="detail-row">
+        <span class="detail-label">${isExport ? this._t('export') : this._t('import')}</span>
+        <span class="detail-val" style="color: ${isExport ? colors.battery : '#ef4444'};">${this._formatPower(displayW)}</span>
+      </div>
+    `;
+  }
+
+  _renderGridBar(colors, isGridImport, isGridExport) {
+    const importW = this._getGridImportWatts();
+    const exportW = this._getGridExportWatts();
+    const maxGrid = this._config.max_grid_power;
+
+    if (this._usesSplitGridSensors() && importW > 50 && exportW > 50) {
+      const totalW = importW + exportW;
+      const totalPercent = Math.min(100, (totalW / maxGrid) * 100);
+      const importWidth = totalPercent * (importW / totalW);
+      const exportWidth = totalPercent * (exportW / totalW);
+      return `<div class="detail-fill-stack"><div class="detail-fill-segment" style="flex-basis:${importWidth}%;background:#ef4444"></div><div class="detail-fill-segment" style="flex-basis:${exportWidth}%;background:${colors.battery}"></div></div>`;
+    }
+
+    const activeW = isGridExport ? exportW : importW;
+    const barColor = isGridExport ? colors.battery : '#ef4444';
+    return `<div class="detail-fill" style="width: ${Math.min(100, (activeW / maxGrid) * 100)}%; background: ${barColor};"></div>`;
+  }
+
+  _renderStorageDetails(colors, batterySoc) {
+    const chargeW = this._getBatteryChargeWatts();
+    const dischargeW = this._getBatteryDischargeWatts();
+
+    if (this._usesSplitBatteryPowerSensors()) {
+      return `
+        <div class="detail-row">
+          <span class="detail-label">${this._t('charging')}</span>
+          <span class="detail-val" style="color: ${colors.battery};">${this._formatPower(chargeW)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">${this._t('discharging')}</span>
+          <span class="detail-val" style="color: ${colors.battery};">${this._formatPower(dischargeW)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">SOC</span>
+          <span class="detail-val" style="color: ${colors.battery};">${Math.round(batterySoc)}%</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="detail-row">
+        <span class="detail-label">${this._t('power')}</span>
+        <span class="detail-val">${this._formatPower(this._getBatteryPowerDisplay())}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">SOC</span>
+        <span class="detail-val" style="color: ${colors.battery};">${Math.round(batterySoc)}%</span>
+      </div>
+    `;
   }
 
   // Generate animated flow path with real SVG filter glow (CodePen style)
@@ -24164,9 +24374,8 @@ class PrismEnergyCard extends HTMLElement {
 
     // Get current values - use _getStateInWatts for power sensors to handle kW units (e.g. from evcc)
     const solarPower = this._getStateInWatts(this._config.solar_power, 0);
-    const gridPower = this._getStateInWatts(this._config.grid_power, 0);
+    const gridPowerDisplay = this._getGridPowerDisplay();
     const batterySoc = this._getState(this._config.battery_soc, 0); // SOC is percentage, not power
-    const batteryPower = this._getStateInWatts(this._config.battery_power, 0);
     const homeConsumption = this._getStateInWatts(this._config.home_consumption, 0);
     const evPower = this._getStateInWatts(this._config.ev_power, 0);
     const autarky = this._getState(this._config.autarky, 0); // Autarky is percentage
@@ -24179,14 +24388,12 @@ class PrismEnergyCard extends HTMLElement {
     // Get weather data
     const weatherData = this._getWeatherData();
 
-    // Determine flow states
-    // OpenEMS: GridActivePower positive = import, negative = export
-    // OpenEMS: EssDischargePower positive = discharge, negative = charge
+    // Determine flow states (combined sensors: signed power; split sensors: separate import/export, charge/discharge)
     const isSolarActive = solarPower > 50;
-    const isGridImport = gridPower > 50;
-    const isGridExport = gridPower < -50;
-    const isBatteryCharging = batteryPower < -50;
-    const isBatteryDischarging = batteryPower > 50;
+    const isGridImport = this._isGridImport();
+    const isGridExport = this._isGridExport();
+    const isBatteryCharging = this._isBatteryCharging();
+    const isBatteryDischarging = this._isBatteryDischarging();
     const isEvCharging = evPower > 50;
 
     // Battery icon based on SOC
@@ -25093,12 +25300,12 @@ class PrismEnergyCard extends HTMLElement {
           </div>
 
           <!-- Grid Pill (Left - Power Pole) - Clickable for history -->
-          <div class="pill pill-grid" style="top: ${pillPos.grid.y}%; left: ${pillPos.grid.x}%; --pill-scale: ${pillPos.grid.scale};" data-entity="${this._config.grid_power}">
+          <div class="pill pill-grid" style="top: ${pillPos.grid.y}%; left: ${pillPos.grid.x}%; --pill-scale: ${pillPos.grid.scale};" data-entity="${this._getGridPillEntity()}">
             <div class="pill-icon ${isGridImport || isGridExport ? 'bg-grid' : 'bg-inactive'}">
               <ha-icon icon="mdi:transmission-tower" class="${isGridImport || isGridExport ? 'color-grid' : 'color-inactive'}"></ha-icon>
             </div>
             <div class="pill-content">
-              <span class="pill-val">${this._formatPower(gridPower)}</span>
+              <span class="pill-val">${this._formatPower(gridPowerDisplay)}</span>
               <span class="pill-label">${isGridExport ? this._t('export') : isGridImport ? this._t('import') : this._t('neutral')}</span>
             </div>
           </div>
@@ -25163,13 +25370,10 @@ class PrismEnergyCard extends HTMLElement {
           <div class="detail-col">
             <div class="detail-header">${this._t('grid')}</div>
             <div class="detail-content">
-              <div class="detail-row">
-                <span class="detail-label">${isGridExport ? this._t('export') : this._t('import')}</span>
-                <span class="detail-val" style="color: ${isGridExport ? colors.battery : '#ef4444'};">${this._formatPower(gridPower)}</span>
-              </div>
+              ${this._renderGridDetails(colors)}
             </div>
             <div class="detail-bar">
-              <div class="detail-fill" style="width: ${Math.min(100, (Math.abs(gridPower) / this._config.max_grid_power) * 100)}%; background: ${isGridExport ? colors.battery : '#ef4444'};"></div>
+              ${this._renderGridBar(colors, isGridImport, isGridExport)}
             </div>
           </div>
 
@@ -25206,14 +25410,7 @@ class PrismEnergyCard extends HTMLElement {
           <div class="detail-col">
             <div class="detail-header">${this._t('storage')}</div>
             <div class="detail-content">
-              <div class="detail-row">
-                <span class="detail-label">${this._t('power')}</span>
-                <span class="detail-val">${this._formatPower(Math.abs(batteryPower))}</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">SOC</span>
-                <span class="detail-val" style="color: ${colors.battery};">${Math.round(batterySoc)}%</span>
-              </div>
+              ${this._renderStorageDetails(colors, batterySoc)}
             </div>
             <div class="detail-bar">
               <div class="detail-fill" style="width: ${batterySoc}%; background: ${colors.battery};"></div>
@@ -25244,13 +25441,11 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.2.6 %c Responsive Details Section `,
+  `%c PRISM-ENERGY %c v1.2.7 %c Responsive Details Section `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
-
-
 })();
 
 // ============================================
