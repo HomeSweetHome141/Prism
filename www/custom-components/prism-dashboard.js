@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.0
+ * @version 1.3.1
  * @author BangerTech
  */
 
@@ -22469,7 +22469,55 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_3_show_label: true,
       custom_pill_3_top: 85,
       custom_pill_3_left: 65,
-      custom_pill_3_scale: 1.0
+      custom_pill_3_scale: 1.0,
+      custom_pill_4_entity: "",
+      custom_pill_4_icon: "mdi:gauge",
+      custom_pill_4_label: "",
+      custom_pill_4_color: [168, 85, 247],
+      custom_pill_4_show_label: true,
+      custom_pill_4_top: 88,
+      custom_pill_4_left: 20,
+      custom_pill_4_scale: 1.0,
+      custom_pill_5_entity: "",
+      custom_pill_5_icon: "mdi:flash",
+      custom_pill_5_label: "",
+      custom_pill_5_color: [251, 191, 36],
+      custom_pill_5_show_label: true,
+      custom_pill_5_top: 88,
+      custom_pill_5_left: 40,
+      custom_pill_5_scale: 1.0,
+      custom_pill_6_entity: "",
+      custom_pill_6_icon: "mdi:information",
+      custom_pill_6_label: "",
+      custom_pill_6_color: [244, 114, 182],
+      custom_pill_6_show_label: true,
+      custom_pill_6_top: 88,
+      custom_pill_6_left: 80,
+      custom_pill_6_scale: 1.0,
+      battery_charge_overlay_icon: "mdi:battery-arrow-up",
+      battery_charge_overlay_color: [234, 179, 8],
+      battery_charge_overlay_opacity: 1.0,
+      battery_charge_overlay_show_icon: true,
+      battery_charge_overlay_top: 56,
+      battery_charge_overlay_left: 94,
+      battery_charge_overlay_scale: 0.9,
+      battery_discharge_overlay_icon: "mdi:battery-arrow-down",
+      battery_discharge_overlay_color: [34, 197, 94],
+      battery_discharge_overlay_opacity: 1.0,
+      battery_discharge_overlay_show_icon: true,
+      battery_discharge_overlay_top: 64,
+      battery_discharge_overlay_left: 94,
+      battery_discharge_overlay_scale: 0.9,
+      ev_soc_overlay_icon: "mdi:car-electric",
+      ev_soc_overlay_color: [125, 211, 252],
+      ev_soc_overlay_opacity: 1.0,
+      ev_soc_overlay_show_icon: true,
+      ev_soc_overlay_top: 78,
+      ev_soc_overlay_left: 26,
+      ev_soc_overlay_scale: 0.85,
+      status_pill_top: 12,
+      status_pill_left: 78,
+      status_pill_scale: 1.0
     };
   }
 
@@ -22603,7 +22651,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "ðŸŒ¤ï¸ Weather & Day/Night Animation",
+          title: "Weather & Day/Night Animation",
           schema: [
             {
               name: "enable_weather_effects",
@@ -22625,7 +22673,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "ðŸ“Š Maximum Values for Progress Bars",
+          title: "Maximum Values for Progress Bars",
           schema: [
             {
               name: "max_solar_power",
@@ -22647,7 +22695,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "â˜€ï¸ Solar Modules (optional - for individual display)",
+          title: "Solar Modules (optional - for individual display)",
           schema: [
             {
               name: "solar_module1",
@@ -22694,7 +22742,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "ðŸ“ Pill Positions & Size (optional)",
+          title: "Pill Positions & Size (optional)",
           schema: [
             {
               type: "grid",
@@ -22800,13 +22848,185 @@ class PrismEnergyCard extends HTMLElement {
                   selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
                 }
               ]
+            },
+            {
+              type: "grid",
+              name: "",
+              schema: [
+                {
+                  name: "status_pill_top",
+                  label: "Status pill top",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "status_pill_left",
+                  label: "Status pill left",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "status_pill_scale",
+                  label: "Status pill size",
+                  selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                }
+              ]
             }
           ]
         },
         {
           type: "expandable",
           name: "",
-          title: "ðŸŽ¯ Custom Pills (optional)",
+          title: "Power Overlays (optional)",
+          schema: [
+            {
+              type: "expandable",
+              name: "",
+              title: "Battery Charge Overlay",
+              schema: [
+                {
+                  name: "battery_charge_overlay_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "battery_charge_overlay_color",
+                  label: "Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "battery_charge_overlay_opacity",
+                  label: "Transparency (0 = hidden, 1 = solid)",
+                  selector: { number: { min: 0, max: 1, step: 0.05, mode: "box" } }
+                },
+                {
+                  name: "battery_charge_overlay_show_icon",
+                  label: "Show icon",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "battery_charge_overlay_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "battery_charge_overlay_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "battery_charge_overlay_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Battery Discharge Overlay",
+              schema: [
+                {
+                  name: "battery_discharge_overlay_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "battery_discharge_overlay_color",
+                  label: "Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "battery_discharge_overlay_opacity",
+                  label: "Transparency (0 = hidden, 1 = solid)",
+                  selector: { number: { min: 0, max: 1, step: 0.05, mode: "box" } }
+                },
+                {
+                  name: "battery_discharge_overlay_show_icon",
+                  label: "Show icon",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "battery_discharge_overlay_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "battery_discharge_overlay_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "battery_discharge_overlay_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "EV SOC Overlay",
+              schema: [
+                {
+                  name: "ev_soc_overlay_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "ev_soc_overlay_color",
+                  label: "Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "ev_soc_overlay_opacity",
+                  label: "Transparency (0 = hidden, 1 = solid)",
+                  selector: { number: { min: 0, max: 1, step: 0.05, mode: "box" } }
+                },
+                {
+                  name: "ev_soc_overlay_show_icon",
+                  label: "Show icon",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "ev_soc_overlay_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "ev_soc_overlay_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "ev_soc_overlay_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "Custom Pills (optional)",
           schema: [
             {
               type: "expandable",
@@ -22966,6 +23186,165 @@ class PrismEnergyCard extends HTMLElement {
                   ]
                 }
               ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 4",
+              schema: [
+                {
+                  name: "custom_pill_4_entity",
+                  label: "Entity",
+                  selector: { entity: {} }
+                },
+                {
+                  name: "custom_pill_4_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_4_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_4_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_4_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_4_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_4_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_4_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 5",
+              schema: [
+                {
+                  name: "custom_pill_5_entity",
+                  label: "Entity",
+                  selector: { entity: {} }
+                },
+                {
+                  name: "custom_pill_5_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_5_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_5_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_5_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_5_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_5_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_5_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 6",
+              schema: [
+                {
+                  name: "custom_pill_6_entity",
+                  label: "Entity",
+                  selector: { entity: {} }
+                },
+                {
+                  name: "custom_pill_6_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_6_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_6_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_6_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_6_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_6_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_6_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -23027,12 +23406,24 @@ class PrismEnergyCard extends HTMLElement {
       battery_charge_overlay_top: config.battery_charge_overlay_top ?? 56,
       battery_charge_overlay_left: config.battery_charge_overlay_left ?? 94,
       battery_charge_overlay_scale: config.battery_charge_overlay_scale ?? 0.9,
+      battery_charge_overlay_icon: config.battery_charge_overlay_icon || "mdi:battery-arrow-up",
+      battery_charge_overlay_color: config.battery_charge_overlay_color || [234, 179, 8],
+      battery_charge_overlay_opacity: config.battery_charge_overlay_opacity ?? 1.0,
+      battery_charge_overlay_show_icon: config.battery_charge_overlay_show_icon !== false,
       battery_discharge_overlay_top: config.battery_discharge_overlay_top ?? 64,
       battery_discharge_overlay_left: config.battery_discharge_overlay_left ?? 94,
       battery_discharge_overlay_scale: config.battery_discharge_overlay_scale ?? 0.9,
+      battery_discharge_overlay_icon: config.battery_discharge_overlay_icon || "mdi:battery-arrow-down",
+      battery_discharge_overlay_color: config.battery_discharge_overlay_color || [34, 197, 94],
+      battery_discharge_overlay_opacity: config.battery_discharge_overlay_opacity ?? 1.0,
+      battery_discharge_overlay_show_icon: config.battery_discharge_overlay_show_icon !== false,
       ev_soc_overlay_top: config.ev_soc_overlay_top ?? 78,
       ev_soc_overlay_left: config.ev_soc_overlay_left ?? 26,
       ev_soc_overlay_scale: config.ev_soc_overlay_scale ?? 0.85,
+      ev_soc_overlay_icon: config.ev_soc_overlay_icon || "mdi:car-electric",
+      ev_soc_overlay_color: config.ev_soc_overlay_color || [125, 211, 252],
+      ev_soc_overlay_opacity: config.ev_soc_overlay_opacity ?? 1.0,
+      ev_soc_overlay_show_icon: config.ev_soc_overlay_show_icon !== false,
       ev_label: config.ev_label || "EV",
       ev_soc_entity: config.ev_soc_entity || "",
       status_entity: config.status_entity || config.autarky || "",
@@ -23145,7 +23536,7 @@ class PrismEnergyCard extends HTMLElement {
     if (weatherStatus) {
       const dayNightLabel = this._getDayNightLabel(weatherData.isNight);
       const weatherTypeLabel = this._getWeatherLabel(weatherData);
-      weatherStatus.textContent = `${dayNightLabel} â€¢ ${weatherTypeLabel}`;
+      weatherStatus.textContent = `${dayNightLabel} ${weatherTypeLabel}`;
     }
   }
 
@@ -23270,8 +23661,28 @@ class PrismEnergyCard extends HTMLElement {
   }
 
 
-  _overlayStyle(top, left, scale) {
-    return `top: ${top}%; left: ${left}%; --overlay-scale: ${scale};`;
+  _overlayStyle(top, left, scale, opacity = 1) {
+    return `top: ${top}%; left: ${left}%; --overlay-scale: ${scale}; opacity: ${opacity};`;
+  }
+
+  _buildPowerOverlay({ extraClass, top, left, scale, opacity, color, icon, showIcon, value, visible }) {
+    const rgb = this._normalizeColor(color);
+    const colorStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+    const style = `${this._overlayStyle(top, left, scale, opacity)} color: rgb(${colorStr});`;
+    const iconHtml = showIcon && icon
+      ? `<ha-icon class="overlay-icon" icon="${icon}" style="color: rgb(${colorStr});"></ha-icon>`
+      : '';
+    return `<div class="power-overlay ${extraClass}" style="${style} display: ${visible ? 'flex' : 'none'};">${iconHtml}<span class="overlay-val">${value}</span></div>`;
+  }
+
+  _updatePowerOverlay(selector, value, visible) {
+    const el = this.shadowRoot?.querySelector(selector);
+    if (!el) return;
+    el.style.display = visible ? 'flex' : 'none';
+    const valEl = el.querySelector('.overlay-val');
+    if (valEl && valEl.textContent !== value) {
+      valEl.textContent = value;
+    }
   }
 
   _getEntityDisplayState(entityId) {
@@ -23285,24 +23696,12 @@ class PrismEnergyCard extends HTMLElement {
     if (!this.shadowRoot || !this._hass) return;
     const chargeW = this._getBatteryChargeWatts();
     const dischargeW = this._getBatteryDischargeWatts();
-    const chargeEl = this.shadowRoot.querySelector('.power-overlay.charge');
-    const dischargeEl = this.shadowRoot.querySelector('.power-overlay.discharge');
-    if (chargeEl) {
-      const show = chargeW > 0;
-      chargeEl.style.display = show ? 'block' : 'none';
-      if (show) chargeEl.textContent = this._formatPower(chargeW);
-    }
-    if (dischargeEl) {
-      const show = dischargeW > 0;
-      dischargeEl.style.display = show ? 'block' : 'none';
-      if (show) dischargeEl.textContent = this._formatPower(dischargeW);
-    }
-    const evSocEl = this.shadowRoot.querySelector('.power-overlay.ev-soc');
-    if (evSocEl && this._config.ev_soc_entity) {
+    this._updatePowerOverlay('.power-overlay.charge', chargeW > 0 ? this._formatPower(chargeW) : '', chargeW > 0);
+    this._updatePowerOverlay('.power-overlay.discharge', dischargeW > 0 ? this._formatPower(dischargeW) : '', dischargeW > 0);
+    if (this._config.ev_soc_entity) {
       const socVal = this._getState(this._config.ev_soc_entity, NaN);
       const show = !isNaN(socVal) && socVal > 0;
-      evSocEl.style.display = show ? 'block' : 'none';
-      if (show) evSocEl.textContent = `${Math.round(socVal)}%`;
+      this._updatePowerOverlay('.power-overlay.ev-soc', show ? `${Math.round(socVal)}%` : '', show);
     }
     if (this._config.status_entity) {
       this._updateElement('.pill-status .pill-val', this._getEntityDisplayState(this._config.status_entity));
@@ -23314,8 +23713,30 @@ class PrismEnergyCard extends HTMLElement {
     const chargeW = this._getBatteryChargeWatts();
     const dischargeW = this._getBatteryDischargeWatts();
     return `
-      <span class="power-overlay charge" style="${this._overlayStyle(this._config.battery_charge_overlay_top, this._config.battery_charge_overlay_left, this._config.battery_charge_overlay_scale)}; display: ${chargeW > 0 ? 'block' : 'none'};">${chargeW > 0 ? this._formatPower(chargeW) : ''}</span>
-      <span class="power-overlay discharge" style="${this._overlayStyle(this._config.battery_discharge_overlay_top, this._config.battery_discharge_overlay_left, this._config.battery_discharge_overlay_scale)}; display: ${dischargeW > 0 ? 'block' : 'none'};">${dischargeW > 0 ? this._formatPower(dischargeW) : ''}</span>
+      ${this._buildPowerOverlay({
+        extraClass: 'charge',
+        top: this._config.battery_charge_overlay_top,
+        left: this._config.battery_charge_overlay_left,
+        scale: this._config.battery_charge_overlay_scale,
+        opacity: this._config.battery_charge_overlay_opacity,
+        color: this._config.battery_charge_overlay_color,
+        icon: this._config.battery_charge_overlay_icon,
+        showIcon: this._config.battery_charge_overlay_show_icon,
+        value: chargeW > 0 ? this._formatPower(chargeW) : '',
+        visible: chargeW > 0
+      })}
+      ${this._buildPowerOverlay({
+        extraClass: 'discharge',
+        top: this._config.battery_discharge_overlay_top,
+        left: this._config.battery_discharge_overlay_left,
+        scale: this._config.battery_discharge_overlay_scale,
+        opacity: this._config.battery_discharge_overlay_opacity,
+        color: this._config.battery_discharge_overlay_color,
+        icon: this._config.battery_discharge_overlay_icon,
+        showIcon: this._config.battery_discharge_overlay_show_icon,
+        value: dischargeW > 0 ? this._formatPower(dischargeW) : '',
+        visible: dischargeW > 0
+      })}
     `;
   }
 
@@ -23323,7 +23744,18 @@ class PrismEnergyCard extends HTMLElement {
     if (!this._config.ev_soc_entity || !this._config.ev_power) return '';
     const socVal = this._getState(this._config.ev_soc_entity, 0);
     const show = socVal > 0;
-    return `<span class="power-overlay ev-soc" style="${this._overlayStyle(this._config.ev_soc_overlay_top, this._config.ev_soc_overlay_left, this._config.ev_soc_overlay_scale)}; display: ${show ? 'block' : 'none'};">${show ? `${Math.round(socVal)}%` : ''}</span>`;
+    return this._buildPowerOverlay({
+      extraClass: 'ev-soc',
+      top: this._config.ev_soc_overlay_top,
+      left: this._config.ev_soc_overlay_left,
+      scale: this._config.ev_soc_overlay_scale,
+      opacity: this._config.ev_soc_overlay_opacity,
+      color: this._config.ev_soc_overlay_color,
+      icon: this._config.ev_soc_overlay_icon,
+      showIcon: this._config.ev_soc_overlay_show_icon,
+      value: show ? `${Math.round(socVal)}%` : '',
+      visible: show
+    });
   }
 
   _renderStatusPill() {
@@ -24823,6 +25255,9 @@ class PrismEnergyCard extends HTMLElement {
           position: absolute;
           z-index: 25;
           transform: translate(-50%, -50%) scale(var(--overlay-scale, 1));
+          display: flex;
+          align-items: center;
+          gap: calc(0.25rem * var(--overlay-scale, 1));
           font-family: "SF Mono", "Monaco", "Inconsolata", monospace;
           font-size: calc(0.8rem * var(--overlay-scale, 1));
           font-weight: 700;
@@ -24831,9 +25266,13 @@ class PrismEnergyCard extends HTMLElement {
           pointer-events: none;
           white-space: nowrap;
         }
-        .power-overlay.charge { color: #EAB308; }
-        .power-overlay.discharge { color: #22C55E; }
-        .power-overlay.ev-soc { color: #7DD3FC; }
+        .power-overlay .overlay-icon {
+          --mdc-icon-size: calc(16px * var(--overlay-scale, 1));
+          flex-shrink: 0;
+        }
+        .power-overlay .overlay-val {
+          line-height: 1;
+        }
         .bg-status { background: rgba(74, 222, 128, 0.15); box-shadow: 0 0 8px rgba(74, 222, 128, 0.3); }
         .color-status { color: #4ade80; }
 
@@ -25074,7 +25513,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.0 %c Overlays & status pill `,
+  `%c PRISM-ENERGY %c v1.3.1 %c Configurable overlays & 6 custom pills `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
