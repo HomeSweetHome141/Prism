@@ -825,16 +825,30 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
+**Current version:** `1.3.4`
+
 **Features:**
 - ✅ **Animated Energy Flows**: Visualizes energy flow between all components
 - ✅ **Solar Production**: Shows current PV power with animation
-- ✅ **Grid Integration**: Import/export with color distinction
-- ✅ **Battery Storage**: SOC display with dynamic icon and charge/discharge status
+- ✅ **Grid Integration**: Combined or split import/export sensors
+- ✅ **Battery Storage**: SOC pill with optional charge/discharge power overlays
 - ✅ **Home Consumption**: Current consumption power
-- ✅ **EV Charging** (optional): EV charging power when configured
-- ✅ **Autarky Badge** (optional): Shows self-consumption rate
-- ✅ **Details Section**: Optional statistics section with bar visualization
+- ✅ **EV Charging** (optional): EV pill with optional SOC overlay
+- ✅ **Status Pill** (optional): Configurable entity pill (replaces legacy autarky badge; use `status_entity` or legacy `autarky`)
+- ✅ **Power Overlays**: Battery charge/discharge and EV SOC overlays with icon, color, transparency, position, and enable toggle
+- ✅ **8 Custom Pills**: Up to eight extra pills with entity, icon, label, color, position, and tap actions (toggle, more-info, navigate, call service)
+- ✅ **Weather & Day/Night** (optional): Rain, snow, fog, sun/moon, sunrise/sunset on the house image
 - ✅ **Visual Editor**: Full configuration via Home Assistant UI Editor
+
+**Recent changes (v1.2.7 → v1.3.4):**
+| Version | Highlights |
+|---------|------------|
+| **1.2.7** | Optional split `grid_import` / `grid_export` and `battery_charge` / `battery_discharge` sensors |
+| **1.3.0** | Power overlays, status pill, up to 6 custom pills in runtime; bottom details section removed |
+| **1.3.1** | Overlay editor: icon, color, transparency, position, size; status pill positioning; custom pills 4–6 in editor |
+| **1.3.2** | Overlay enable toggles; custom pill tap actions (toggle, more-info, navigate, call service) |
+| **1.3.3** | Custom pills 7 and 8 |
+| **1.3.4** | Reliable automation/light toggle on custom pills; config saves re-render the card |
 
 ---
 
@@ -975,9 +989,27 @@ battery_soc: sensor.fems79420_sum_esssoc
 battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
 ev_power: sensor.fems79420_evcs0_chargepower  # Optional - only if EV present
-autarky: sensor.energy_autarky  # Optional - template sensor from above
+ev_label: EV  # Optional pill label
+ev_soc_entity: sensor.my_ev_soc  # Optional EV % overlay
+status_entity: sensor.energy_autarky  # Optional status pill (or legacy autarky: same key)
+status_icon: mdi:leaf
+status_label: Autarky
 image: /hacsfiles/Prism-Dashboard/images/prism-energy-home.png  # Optional, default is automatically used
-show_details: true
+# Optional split sensors (instead of signed grid_power / battery_power)
+# grid_import: sensor.grid_import_power
+# grid_export: sensor.grid_export_power
+# battery_charge: sensor.battery_charge_power
+# battery_discharge: sensor.battery_discharge_power
+```
+
+**Custom pill example (toggle automation or light):**
+```yaml
+custom_pill_1_entity: automation.night_mode
+custom_pill_1_icon: mdi:weather-night
+custom_pill_1_label: Night
+custom_pill_1_tap_action: toggle  # toggle | more-info | navigate | call-service | none
+custom_pill_1_top: 85
+custom_pill_1_left: 35
 ```
 
 **Advanced Configuration with Solar Modules:**
@@ -1006,35 +1038,55 @@ solar_module3_name: "House"
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `name` | string | No | Card name (default: "Energy Monitor") |
+| `show_header_icon` | boolean | No | Show icon in header (default: true) |
+| `header_icon` | icon | No | Header icon (default: `mdi:solar-power-variant`) |
 | `solar_power` | entity | Yes | Solar production sensor (total) |
-| `grid_power` | entity | Yes | Grid power sensor (positive=import, negative=export) |
+| `grid_power` | entity | No* | Combined grid power (+import, −export). *Required if import/export not split* |
+| `grid_import` | entity | No | Separate grid import sensor (optional) |
+| `grid_export` | entity | No | Separate grid export sensor (optional) |
 | `battery_soc` | entity | Yes | Battery state of charge in % |
-| `battery_power` | entity | Yes | Battery power (positive=discharge, negative=charge) |
+| `battery_power` | entity | No* | Combined battery power (+discharge, −charge). *Required if charge/discharge not split* |
+| `battery_charge` | entity | No | Separate battery charge power (optional) |
+| `battery_discharge` | entity | No | Separate battery discharge power (optional) |
 | `home_consumption` | entity | Yes | Home consumption sensor |
-| `ev_power` | entity | No | EV charging power (if not set, EV is not displayed) |
-| `autarky` | entity | No | Autarky percentage (if not set, badge is not displayed) |
+| `ev_power` | entity | No | EV charging power (if not set, EV pill is hidden) |
+| `ev_label` | string | No | EV pill label (default: `EV`) |
+| `ev_soc_entity` | entity | No | EV battery % for SOC overlay |
+| `status_entity` | entity | No | Status pill entity (any entity; shows state value) |
+| `status_icon` | icon | No | Status pill icon (default: `mdi:battery-sync`) |
+| `status_label` | string | No | Status pill label (optional) |
+| `status_show_label` | boolean | No | Show status label under value |
+| `autarky` | entity | No | *Legacy* – mapped to `status_entity` if `status_entity` is empty |
 | `image` | string | No | Path to house image (default: prism-energy-home.png) |
-| `show_details` | boolean | No | Show details section at bottom (default: true) |
-| **Solar Module** | | | *Optional individual display of solar chargers in detail section* |
-| `solar_module1` | entity | No | Solar Charger 1 Entity (e.g., `charger0_actualpower`) |
-| `solar_module1_name` | string | No | Name for module 1 (e.g., "Office Left") |
-| `solar_module2` | entity | No | Solar Charger 2 Entity |
-| `solar_module2_name` | string | No | Name for module 2 (e.g., "Office Right") |
-| `solar_module3` | entity | No | Solar Charger 3 Entity |
-| `solar_module3_name` | string | No | Name for module 3 (e.g., "House") |
-| `solar_module4` | entity | No | Solar Charger 4 Entity |
-| `solar_module4_name` | string | No | Name for module 4 |
-| **Pill Positions** | | | *Optional - customize pill placement on image* |
-| `solar_pill_top` | number | No | Solar pill vertical position (default: 22%) |
-| `solar_pill_left` | number | No | Solar pill horizontal position (default: 52%) |
-| `grid_pill_top` | number | No | Grid pill vertical position (default: 32%) |
-| `grid_pill_left` | number | No | Grid pill horizontal position (default: 18%) |
-| `home_pill_top` | number | No | Home pill vertical position (default: 54%) |
-| `home_pill_left` | number | No | Home pill horizontal position (default: 55%) |
-| `battery_pill_top` | number | No | Battery pill vertical position (default: 60%) |
-| `battery_pill_left` | number | No | Battery pill horizontal position (default: 88%) |
-| `ev_pill_top` | number | No | EV pill vertical position (default: 72%) |
-| `ev_pill_left` | number | No | EV pill horizontal position (default: 22%) |
+| `enable_weather_effects` | boolean | No | Enable weather animations |
+| `weather_entity` | entity | No | Weather entity (e.g. `weather.home`) |
+| `cloud_coverage_entity` | entity | No | Optional cloud coverage sensor |
+| `max_solar_power` | number | No | Max solar W for scaling (default: 10000) |
+| `max_grid_power` | number | No | Max grid W (default: 10000) |
+| `max_consumption` | number | No | Max consumption W (default: 10000) |
+
+**Pill positions & size** (`*_pill_top`, `*_pill_left`, `*_pill_scale` in % / scale): solar, grid, home, battery, ev, **status**
+
+**Power overlays** (editor: *Power Overlays*): each overlay supports `*_enabled`, `*_icon`, `*_color`, `*_opacity`, `*_show_icon`, `*_top`, `*_left`, `*_scale`
+- `battery_charge_overlay_*` – charge power near battery
+- `battery_discharge_overlay_*` – discharge power near battery
+- `ev_soc_overlay_*` – EV SOC % (requires `ev_soc_entity` and `ev_power`)
+
+**Custom pills 1–8** (editor: *Custom Pills*): per pill `custom_pill_N_entity`, `_icon`, `_label`, `_color`, `_show_label`, `_top`, `_left`, `_scale`, `_tap_action`, `_navigation_path`, `_service`, `_service_data`
+
+| `custom_pill_N_tap_action` | Behavior |
+|----------------------------|----------|
+| `toggle` | Toggle entity (lights, switches, **automations** on/off, scripts, etc.) |
+| `more-info` | Open entity dialog (default) |
+| `navigate` | Go to `custom_pill_N_navigation_path` |
+| `call-service` | Call `custom_pill_N_service` (entity_id added automatically if omitted) |
+| `none` | No action on tap |
+
+Standard pills (solar, grid, home, battery, ev) always open **more-info** on tap. Custom pills use the configured tap action.
+
+**Solar modules** (optional, for reference in YAML): `solar_module1`–`4` + `*_name`
+
+> **Note:** The bottom statistics/details section from earlier versions is no longer shown. Use overlays, the status pill, and custom pills instead.
 
 ---
 

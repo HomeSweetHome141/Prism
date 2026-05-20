@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.3
+ * @version 1.3.4
  * @author BangerTech
  */
 
@@ -23695,6 +23695,12 @@ class PrismEnergyCard extends HTMLElement {
       this._config[`custom_pill_${i}_service`] = config[`custom_pill_${i}_service`] || '';
       this._config[`custom_pill_${i}_service_data`] = config[`custom_pill_${i}_service_data`] || {};
     }
+    if (this._hass) {
+      this.render();
+      if (!this._initialized) {
+        this._initialized = true;
+      }
+    }
   }
 
   set hass(hass) {
@@ -24095,6 +24101,7 @@ class PrismEnergyCard extends HTMLElement {
     if (this._animationFrame) {
       cancelAnimationFrame(this._animationFrame);
     }
+    this._listenersAttached = false;
   }
 
   // Open more-info dialog for an entity (shows history)
@@ -24122,26 +24129,50 @@ class PrismEnergyCard extends HTMLElement {
     window.dispatchEvent(new Event('location-changed'));
   }
 
+  _callService(domain, service, serviceData = {}) {
+    if (!this._hass?.callService) return Promise.resolve();
+    const data = { ...serviceData };
+    return this._hass.callService(domain, service, data).catch((err) => {
+      console.warn('[prism-energy] Service call failed:', domain, service, data, err);
+    });
+  }
+
+  _getCustomPillTapAction(index) {
+    let action = this._config[`custom_pill_${index}_tap_action`] || 'more-info';
+    if (typeof action === 'object' && action?.action) {
+      action = action.action;
+    }
+    return action;
+  }
+
   _toggleEntity(entityId) {
     if (!entityId || !this._hass) return;
     const domain = entityId.split('.')[0];
     const entity = this._hass.states[entityId];
-    const state = entity ? entity.state : 'off';
+    const state = entity?.state ?? 'off';
 
     if (domain === 'lock') {
-      this._hass.callService('lock', state === 'locked' ? 'unlock' : 'lock', { entity_id: entityId });
+      this._callService('lock', state === 'locked' ? 'unlock' : 'lock', { entity_id: entityId });
     } else if (domain === 'cover') {
-      this._hass.callService('cover', state === 'open' ? 'close_cover' : 'open_cover', { entity_id: entityId });
+      this._callService('cover', (state === 'open' || state === 'opening') ? 'close_cover' : 'open_cover', { entity_id: entityId });
     } else if (domain === 'scene' || domain === 'script') {
-      this._hass.callService(domain, 'turn_on', { entity_id: entityId });
+      this._callService(domain, 'turn_on', { entity_id: entityId });
+    } else if (domain === 'automation') {
+      this._callService('automation', state === 'on' ? 'turn_off' : 'turn_on', { entity_id: entityId });
+    } else if (['light', 'switch', 'fan', 'input_boolean'].includes(domain)) {
+      this._callService(domain, 'toggle', { entity_id: entityId });
+    } else if (this._hass.services?.[domain]?.toggle) {
+      this._callService(domain, 'toggle', { entity_id: entityId });
+    } else if (state === 'on') {
+      this._callService(domain, 'turn_off', { entity_id: entityId });
     } else {
-      this._hass.callService(domain, 'toggle', { entity_id: entityId });
+      this._callService(domain, 'turn_on', { entity_id: entityId });
     }
   }
 
   _executeCustomPillAction(index) {
     if (!this._hass) return;
-    const action = this._config[`custom_pill_${index}_tap_action`] || 'more-info';
+    const action = this._getCustomPillTapAction(index);
     const entity = this._config[`custom_pill_${index}_entity`];
 
     if (action === 'none') return;
@@ -24166,42 +24197,41 @@ class PrismEnergyCard extends HTMLElement {
       if (entity && !serviceData.entity_id) {
         serviceData.entity_id = entity;
       }
-      this._hass.callService(domain, service, serviceData);
+      this._callService(domain, service, serviceData);
     }
   }
 
-  // Setup click event listeners for pills
+  // Setup click event listeners for pills (delegated so config re-renders stay wired)
   _setupEventListeners() {
-    if (!this.shadowRoot) return;
+    if (!this.shadowRoot || this._listenersAttached) return;
+    this._listenersAttached = true;
 
-    this.shadowRoot.querySelectorAll('.pill[data-custom-pill]').forEach(pill => {
-      pill.addEventListener('click', (e) => {
+    this.shadowRoot.addEventListener('click', (e) => {
+      const customPill = e.target.closest('.pill[data-custom-pill]');
+      if (customPill) {
         e.stopPropagation();
-        const index = parseInt(pill.getAttribute('data-custom-pill'), 10);
+        const index = parseInt(customPill.getAttribute('data-custom-pill'), 10);
         if (!isNaN(index)) {
           this._executeCustomPillAction(index);
         }
-      });
-    });
-    
-    // Add click listeners to standard pills with data-entity attribute
-    this.shadowRoot.querySelectorAll('.pill[data-entity]:not([data-custom-pill])').forEach(pill => {
-      pill.addEventListener('click', (e) => {
+        return;
+      }
+
+      const pill = e.target.closest('.pill[data-entity]:not([data-custom-pill])');
+      if (pill) {
         e.stopPropagation();
         const entityId = pill.getAttribute('data-entity');
         if (entityId) {
           this._openMoreInfo(entityId);
         }
-      });
-    });
+        return;
+      }
 
-    // Add click listener to house image (opens home consumption history)
-    const houseImg = this.shadowRoot.querySelector('.house-img');
-    if (houseImg && this._config.home_consumption) {
-      houseImg.addEventListener('click', () => {
+      const houseImg = e.target.closest('.house-img');
+      if (houseImg && this._config.home_consumption) {
         this._openMoreInfo(this._config.home_consumption);
-      });
-    }
+      }
+    });
   }
 
   // Helper to get entity state
@@ -25409,7 +25439,8 @@ class PrismEnergyCard extends HTMLElement {
           transform: translate(-50%, -50%) scale(calc(var(--pill-scale) * 1.03));
         }
         
-        .pill[data-entity] {
+        .pill[data-entity],
+        .pill[data-custom-pill] {
           cursor: pointer;
         }
         
@@ -25803,7 +25834,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.3 %c 8 custom pills `,
+  `%c PRISM-ENERGY %c v1.3.4 %c Custom pill toggle fix `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
