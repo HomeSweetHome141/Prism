@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.2
+ * @version 1.3.3
  * @author BangerTech
  */
 
@@ -156,6 +156,22 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_6_top: 88,
       custom_pill_6_left: 80,
       custom_pill_6_scale: 1.0,
+      custom_pill_7_entity: "",
+      custom_pill_7_icon: "mdi:home",
+      custom_pill_7_label: "",
+      custom_pill_7_color: [56, 189, 248],
+      custom_pill_7_show_label: true,
+      custom_pill_7_top: 92,
+      custom_pill_7_left: 30,
+      custom_pill_7_scale: 1.0,
+      custom_pill_8_entity: "",
+      custom_pill_8_icon: "mdi:leaf",
+      custom_pill_8_label: "",
+      custom_pill_8_color: [52, 211, 153],
+      custom_pill_8_show_label: true,
+      custom_pill_8_top: 92,
+      custom_pill_8_left: 70,
+      custom_pill_8_scale: 1.0,
       battery_charge_overlay_icon: "mdi:battery-arrow-up",
       battery_charge_overlay_color: [234, 179, 8],
       battery_charge_overlay_opacity: 1.0,
@@ -1034,6 +1050,114 @@ class PrismEnergyCard extends HTMLElement {
                 },
                 ...PrismEnergyCard._customPillActionFields(6)
               ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 7",
+              schema: [
+                {
+                  name: "custom_pill_7_entity",
+                  label: "Entity",
+                  selector: { entity: {} }
+                },
+                {
+                  name: "custom_pill_7_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_7_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_7_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_7_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_7_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_7_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_7_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                },
+                ...PrismEnergyCard._customPillActionFields(7)
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Custom Pill 8",
+              schema: [
+                {
+                  name: "custom_pill_8_entity",
+                  label: "Entity",
+                  selector: { entity: {} }
+                },
+                {
+                  name: "custom_pill_8_icon",
+                  label: "Icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "custom_pill_8_label",
+                  label: "Label (optional)",
+                  selector: { text: {} }
+                },
+                {
+                  name: "custom_pill_8_color",
+                  label: "Icon Color",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "custom_pill_8_show_label",
+                  label: "Show label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "custom_pill_8_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_8_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "custom_pill_8_scale",
+                      label: "Size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                },
+                ...PrismEnergyCard._customPillActionFields(8)
+              ]
             }
           ]
         }
@@ -1173,9 +1297,25 @@ class PrismEnergyCard extends HTMLElement {
       custom_pill_6_show_label: config.custom_pill_6_show_label !== false,
       custom_pill_6_top: config.custom_pill_6_top ?? 88,
       custom_pill_6_left: config.custom_pill_6_left ?? 80,
-      custom_pill_6_scale: config.custom_pill_6_scale ?? 1.0
+      custom_pill_6_scale: config.custom_pill_6_scale ?? 1.0,
+      custom_pill_7_entity: config.custom_pill_7_entity || "",
+      custom_pill_7_icon: config.custom_pill_7_icon || "mdi:home",
+      custom_pill_7_label: config.custom_pill_7_label || "",
+      custom_pill_7_color: config.custom_pill_7_color || [56, 189, 248],
+      custom_pill_7_show_label: config.custom_pill_7_show_label !== false,
+      custom_pill_7_top: config.custom_pill_7_top ?? 92,
+      custom_pill_7_left: config.custom_pill_7_left ?? 30,
+      custom_pill_7_scale: config.custom_pill_7_scale ?? 1.0,
+      custom_pill_8_entity: config.custom_pill_8_entity || "",
+      custom_pill_8_icon: config.custom_pill_8_icon || "mdi:leaf",
+      custom_pill_8_label: config.custom_pill_8_label || "",
+      custom_pill_8_color: config.custom_pill_8_color || [52, 211, 153],
+      custom_pill_8_show_label: config.custom_pill_8_show_label !== false,
+      custom_pill_8_top: config.custom_pill_8_top ?? 92,
+      custom_pill_8_left: config.custom_pill_8_left ?? 70,
+      custom_pill_8_scale: config.custom_pill_8_scale ?? 1.0
     };
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 8; i++) {
       this._config[`custom_pill_${i}_tap_action`] = config[`custom_pill_${i}_tap_action`] || 'more-info';
       this._config[`custom_pill_${i}_navigation_path`] = config[`custom_pill_${i}_navigation_path`] || '';
       this._config[`custom_pill_${i}_service`] = config[`custom_pill_${i}_service`] || '';
@@ -1317,7 +1457,7 @@ class PrismEnergyCard extends HTMLElement {
 
   // Update Custom Pills values
   _updateCustomPills() {
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 8; i++) {
       const entity = this._config[`custom_pill_${i}_entity`];
       if (entity) {
         const stateObj = this._hass.states[entity];
@@ -1488,7 +1628,7 @@ class PrismEnergyCard extends HTMLElement {
   _renderCustomPills() {
     let html = '';
     
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 8; i++) {
       const entity = this._config[`custom_pill_${i}_entity`];
       if (!entity) continue;
       
@@ -3289,7 +3429,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.2 %c Overlay toggles & pill tap actions `,
+  `%c PRISM-ENERGY %c v1.3.3 %c 8 custom pills `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
