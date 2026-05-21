@@ -220,7 +220,7 @@ Prism Dashboard includes **29+ custom cards** (including dark and light theme va
 - **prism-vacuum-switchbot** – Specialized card for SwitchBot vacuums
 
 ### Energy
-- **prism-energy** (v1.3.5) – Energy flow card with glow/angled overlays, temp sensors, status pill, 8 custom pills with tap actions
+- **prism-energy** (v1.3.7) – Energy flow card with overlays, extra pill, 8 custom pills with tap actions and off-state dimming
 - **prism-energy-horizontal** – Horizontal energy flow layout
 
 ### 3D Printing
