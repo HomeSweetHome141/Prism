@@ -825,7 +825,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
-**Current version:** `1.3.4`
+**Current version:** `1.3.6`
 
 **Features:**
 - ✅ **Animated Energy Flows**: Visualizes energy flow between all components
@@ -849,6 +849,8 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 | **1.3.2** | Overlay enable toggles; custom pill tap actions (toggle, more-info, navigate, call service) |
 | **1.3.3** | Custom pills 7 and 8 |
 | **1.3.4** | Reliable automation/light toggle on custom pills; config saves re-render the card |
+| **1.3.5** | Overlay glow, rotation angle, labels; inverter & battery temperature sensor overlays |
+| **1.3.6** | Tesla connected sensor overlay |
 
 ---
 
@@ -1067,10 +1069,13 @@ solar_module3_name: "House"
 
 **Pill positions & size** (`*_pill_top`, `*_pill_left`, `*_pill_scale` in % / scale): solar, grid, home, battery, ev, **status**
 
-**Power overlays** (editor: *Power Overlays*): each overlay supports `*_enabled`, `*_icon`, `*_color`, `*_opacity`, `*_show_icon`, `*_top`, `*_left`, `*_scale`
-- `battery_charge_overlay_*` – charge power near battery
-- `battery_discharge_overlay_*` – discharge power near battery
+**Power overlays** (editor: *Power Overlays*): each overlay supports `*_enabled`, `*_label`, `*_show_label`, `*_icon`, `*_color`, `*_opacity`, `*_glow` (0–1), `*_angle` (degrees), `*_show_icon`, `*_top`, `*_left`, `*_scale`
+- `battery_charge_overlay_*` – charge power near battery (shown when charging)
+- `battery_discharge_overlay_*` – discharge power near battery (shown when discharging)
 - `ev_soc_overlay_*` – EV SOC % (requires `ev_soc_entity` and `ev_power`)
+- `inverter_temp_overlay_*` – inverter temperature (`inverter_temp_overlay_entity` sensor)
+- `battery_temp_overlay_*` – battery temperature (`battery_temp_overlay_entity` sensor)
+- `tesla_connected_overlay_*` – Tesla connected state (`tesla_connected_overlay_entity`, binary_sensor or sensor)
 
 **Custom pills 1–8** (editor: *Custom Pills*): per pill `custom_pill_N_entity`, `_icon`, `_label`, `_color`, `_show_label`, `_top`, `_left`, `_scale`, `_tap_action`, `_navigation_path`, `_service`, `_service_data`
 
