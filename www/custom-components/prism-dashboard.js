@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.7
+ * @version 1.3.8
  * @author BangerTech
  */
 
@@ -22535,6 +22535,11 @@ class PrismEnergyCard extends HTMLElement {
       {
         name: `custom_pill_${index}_dim_when_off`,
         label: "Grey icon when off or disabled",
+        selector: { boolean: {} }
+      },
+      {
+        name: `custom_pill_${index}_breathe_when_on`,
+        label: "Breathe icon glow when on/enabled",
         selector: { boolean: {} }
       },
       {
@@ -22765,11 +22770,20 @@ class PrismEnergyCard extends HTMLElement {
       status_pill_scale: 1.0,
       extra_pill_entity: "",
       extra_pill_icon: "mdi:information-outline",
+      extra_pill_color: [96, 165, 250],
       extra_pill_label: "",
       extra_pill_show_label: false,
       extra_pill_top: 8,
       extra_pill_left: 65,
-      extra_pill_scale: 1.0
+      extra_pill_scale: 1.0,
+      extra_pill_2_entity: "",
+      extra_pill_2_icon: "mdi:flash-outline",
+      extra_pill_2_color: [168, 85, 247],
+      extra_pill_2_label: "",
+      extra_pill_2_show_label: false,
+      extra_pill_2_top: 8,
+      extra_pill_2_left: 85,
+      extra_pill_2_scale: 1.0
     };
   }
 
@@ -22907,6 +22921,11 @@ class PrismEnergyCard extends HTMLElement {
           selector: { icon: {} }
         },
         {
+          name: "extra_pill_color",
+          label: "Extra pill icon color",
+          selector: { color_rgb: {} }
+        },
+        {
           name: "extra_pill_label",
           label: "Extra pill label (optional)",
           selector: { text: {} }
@@ -22914,6 +22933,31 @@ class PrismEnergyCard extends HTMLElement {
         {
           name: "extra_pill_show_label",
           label: "Show extra pill label",
+          selector: { boolean: {} }
+        },
+        {
+          name: "extra_pill_2_entity",
+          label: "Extra pill 2 entity (optional, any entity)",
+          selector: { entity: {} }
+        },
+        {
+          name: "extra_pill_2_icon",
+          label: "Extra pill 2 icon",
+          selector: { icon: {} }
+        },
+        {
+          name: "extra_pill_2_color",
+          label: "Extra pill 2 icon color",
+          selector: { color_rgb: {} }
+        },
+        {
+          name: "extra_pill_2_label",
+          label: "Extra pill 2 label (optional)",
+          selector: { text: {} }
+        },
+        {
+          name: "extra_pill_2_show_label",
+          label: "Show extra pill 2 label",
           selector: { boolean: {} }
         },
         {
@@ -23159,6 +23203,27 @@ class PrismEnergyCard extends HTMLElement {
                 {
                   name: "extra_pill_scale",
                   label: "Extra pill size",
+                  selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                }
+              ]
+            },
+            {
+              type: "grid",
+              name: "",
+              schema: [
+                {
+                  name: "extra_pill_2_top",
+                  label: "Extra pill 2 top",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "extra_pill_2_left",
+                  label: "Extra pill 2 left",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "extra_pill_2_scale",
+                  label: "Extra pill 2 size",
                   selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
                 }
               ]
@@ -23692,11 +23757,20 @@ class PrismEnergyCard extends HTMLElement {
       status_pill_scale: config.status_pill_scale ?? 1.0,
       extra_pill_entity: config.extra_pill_entity || "",
       extra_pill_icon: config.extra_pill_icon || "mdi:information-outline",
+      extra_pill_color: config.extra_pill_color || [96, 165, 250],
       extra_pill_label: config.extra_pill_label || "",
       extra_pill_show_label: config.extra_pill_show_label === true,
       extra_pill_top: config.extra_pill_top ?? 8,
       extra_pill_left: config.extra_pill_left ?? 65,
       extra_pill_scale: config.extra_pill_scale ?? 1.0,
+      extra_pill_2_entity: config.extra_pill_2_entity || "",
+      extra_pill_2_icon: config.extra_pill_2_icon || "mdi:flash-outline",
+      extra_pill_2_color: config.extra_pill_2_color || [168, 85, 247],
+      extra_pill_2_label: config.extra_pill_2_label || "",
+      extra_pill_2_show_label: config.extra_pill_2_show_label === true,
+      extra_pill_2_top: config.extra_pill_2_top ?? 8,
+      extra_pill_2_left: config.extra_pill_2_left ?? 85,
+      extra_pill_2_scale: config.extra_pill_2_scale ?? 1.0,
       // Custom Pills
       custom_pill_1_entity: config.custom_pill_1_entity || "",
       custom_pill_1_icon: config.custom_pill_1_icon || "mdi:thermometer",
@@ -23766,6 +23840,7 @@ class PrismEnergyCard extends HTMLElement {
     for (let i = 1; i <= 8; i++) {
       this._config[`custom_pill_${i}_tap_action`] = config[`custom_pill_${i}_tap_action`] || 'more-info';
       this._config[`custom_pill_${i}_dim_when_off`] = config[`custom_pill_${i}_dim_when_off`] === true;
+      this._config[`custom_pill_${i}_breathe_when_on`] = config[`custom_pill_${i}_breathe_when_on`] === true;
       this._config[`custom_pill_${i}_navigation_path`] = config[`custom_pill_${i}_navigation_path`] || '';
       this._config[`custom_pill_${i}_service`] = config[`custom_pill_${i}_service`] || '';
       this._config[`custom_pill_${i}_service_data`] = config[`custom_pill_${i}_service_data`] || {};
@@ -23919,28 +23994,47 @@ class PrismEnergyCard extends HTMLElement {
     return state === 'off' || state === 'disabled' || state === 'unavailable' || state === 'unknown';
   }
 
-  _updateCustomPillInactiveState(index) {
+  _isEntityOnOrActive(entityId) {
+    return !this._isEntityOffOrDisabled(entityId);
+  }
+
+  _applyCustomPillIconStyle(index) {
     const entity = this._config[`custom_pill_${index}_entity`];
-    const dimWhenOff = this._config[`custom_pill_${index}_dim_when_off`] === true;
-    if (!entity || !dimWhenOff) return;
-    const isInactive = this._isEntityOffOrDisabled(entity);
     const iconWrap = this.shadowRoot?.querySelector(`.pill-custom-${index} .pill-icon`);
     const iconEl = this.shadowRoot?.querySelector(`.pill-custom-${index} .pill-icon ha-icon`);
-    if (!iconWrap || !iconEl) return;
+    if (!entity || !iconWrap || !iconEl) return;
+
+    const dimWhenOff = this._config[`custom_pill_${index}_dim_when_off`] === true;
+    const breatheWhenOn = this._config[`custom_pill_${index}_breathe_when_on`] === true;
+    const isInactive = dimWhenOff && this._isEntityOffOrDisabled(entity);
+    const isActive = breatheWhenOn && this._isEntityOnOrActive(entity);
+    const color = this._normalizeColor(this._config[`custom_pill_${index}_color`]);
+    const colorStr = `${color.r}, ${color.g}, ${color.b}`;
+
     iconWrap.classList.toggle('bg-inactive', isInactive);
     iconWrap.classList.toggle('custom-pill-dimmed', isInactive);
+    iconWrap.classList.toggle('custom-pill-breathe', isActive);
     iconEl.classList.toggle('color-inactive', isInactive);
+
     if (isInactive) {
       iconWrap.style.background = '';
       iconWrap.style.boxShadow = '';
+      iconWrap.style.removeProperty('--pill-r');
+      iconWrap.style.removeProperty('--pill-g');
+      iconWrap.style.removeProperty('--pill-b');
       iconEl.style.color = '';
     } else {
-      const color = this._normalizeColor(this._config[`custom_pill_${index}_color`]);
-      const colorStr = `${color.r}, ${color.g}, ${color.b}`;
+      iconWrap.style.setProperty('--pill-r', color.r);
+      iconWrap.style.setProperty('--pill-g', color.g);
+      iconWrap.style.setProperty('--pill-b', color.b);
       iconWrap.style.background = `rgba(${colorStr}, 0.15)`;
-      iconWrap.style.boxShadow = `0 0 8px rgba(${colorStr}, 0.3)`;
+      iconWrap.style.boxShadow = isActive ? '' : `0 0 8px rgba(${colorStr}, 0.3)`;
       iconEl.style.color = `rgb(${colorStr})`;
     }
+  }
+
+  _updateCustomPillInactiveState(index) {
+    this._applyCustomPillIconStyle(index);
   }
 
   // Update Custom Pills values
@@ -23959,6 +24053,9 @@ class PrismEnergyCard extends HTMLElement {
     }
     if (this._config.extra_pill_entity) {
       this._updateElement('.pill-extra .pill-val', this._getEntityDisplayState(this._config.extra_pill_entity));
+    }
+    if (this._config.extra_pill_2_entity) {
+      this._updateElement('.pill-extra-2 .pill-val', this._getEntityDisplayState(this._config.extra_pill_2_entity));
     }
     if (this._config.status_entity) {
       this._updateElement('.pill-status .pill-val', this._getEntityDisplayState(this._config.status_entity));
@@ -24113,18 +24210,40 @@ class PrismEnergyCard extends HTMLElement {
     }
   }
 
-  _renderEntityPill({ entity, icon, label, showLabel, top, left, scale, pillClass, iconBgClass, iconColorClass }) {
+  _renderEntityPill({ entity, icon, label, showLabel, top, left, scale, pillClass, color, iconBgClass, iconColorClass }) {
     if (!entity) return '';
     const displayState = this._getEntityDisplayState(entity);
+    let iconHtml;
+    if (color) {
+      const rgb = this._normalizeColor(color);
+      const colorStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+      iconHtml = `<div class="pill-icon" style="background: rgba(${colorStr}, 0.15); box-shadow: 0 0 8px rgba(${colorStr}, 0.3);"><ha-icon icon="${icon}" style="color: rgb(${colorStr});"></ha-icon></div>`;
+    } else {
+      iconHtml = `<div class="pill-icon ${iconBgClass}"><ha-icon icon="${icon}" class="${iconColorClass}"></ha-icon></div>`;
+    }
     return `
       <div class="pill ${pillClass}" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-entity="${entity}">
-        <div class="pill-icon ${iconBgClass}"><ha-icon icon="${icon}" class="${iconColorClass}"></ha-icon></div>
+        ${iconHtml}
         <div class="pill-content">
           <span class="pill-val">${displayState}</span>
           ${showLabel && label ? `<span class="pill-label">${label}</span>` : ''}
         </div>
       </div>
     `;
+  }
+
+  _renderExtraPillByKey(key, pillClass) {
+    return this._renderEntityPill({
+      entity: this._config[`${key}_entity`],
+      icon: this._config[`${key}_icon`] || 'mdi:information-outline',
+      label: this._config[`${key}_label`] || '',
+      showLabel: this._config[`${key}_show_label`],
+      top: this._config[`${key}_top`] ?? 8,
+      left: this._config[`${key}_left`] ?? 65,
+      scale: this._config[`${key}_scale`] ?? 1.0,
+      pillClass,
+      color: this._config[`${key}_color`]
+    });
   }
 
   _renderStatusPill() {
@@ -24142,19 +24261,9 @@ class PrismEnergyCard extends HTMLElement {
     });
   }
 
-  _renderExtraPill() {
-    return this._renderEntityPill({
-      entity: this._config.extra_pill_entity,
-      icon: this._config.extra_pill_icon || 'mdi:information-outline',
-      label: this._config.extra_pill_label || '',
-      showLabel: this._config.extra_pill_show_label,
-      top: this._config.extra_pill_top ?? 8,
-      left: this._config.extra_pill_left ?? 65,
-      scale: this._config.extra_pill_scale ?? 1.0,
-      pillClass: 'pill-extra',
-      iconBgClass: 'bg-extra',
-      iconColorClass: 'color-extra'
-    });
+  _renderExtraPills() {
+    return this._renderExtraPillByKey('extra_pill', 'pill-extra')
+      + this._renderExtraPillByKey('extra_pill_2', 'pill-extra-2');
   }
 
   _renderAllOverlays() {
@@ -24235,20 +24344,26 @@ class PrismEnergyCard extends HTMLElement {
       const color = this._normalizeColor(colorConfig);
       const colorStr = `${color.r}, ${color.g}, ${color.b}`;
       const dimWhenOff = this._config[`custom_pill_${i}_dim_when_off`] === true;
+      const breatheWhenOn = this._config[`custom_pill_${i}_breathe_when_on`] === true;
       const isInactive = dimWhenOff && this._isEntityOffOrDisabled(entity);
+      const isActive = breatheWhenOn && this._isEntityOnOrActive(entity);
       
       // Get entity value
       const { value, unit } = this._getCustomPillValue(entity);
       const displayValue = value + (unit ? ' ' + unit : '');
-      const iconWrapClass = isInactive ? 'pill-icon bg-inactive custom-pill-dimmed' : 'pill-icon';
-      const iconWrapStyle = isInactive ? '' : `style="background: rgba(${colorStr}, 0.15); box-shadow: 0 0 8px rgba(${colorStr}, 0.3);"`;
+      const iconClasses = ['pill-icon'];
+      if (isInactive) iconClasses.push('bg-inactive', 'custom-pill-dimmed');
+      if (isActive) iconClasses.push('custom-pill-breathe');
+      const iconWrapStyle = isInactive
+        ? ''
+        : `style="--pill-r: ${color.r}; --pill-g: ${color.g}; --pill-b: ${color.b}; background: rgba(${colorStr}, 0.15);${isActive ? '' : ` box-shadow: 0 0 8px rgba(${colorStr}, 0.3);`}"`;
       const iconEl = isInactive
         ? `<ha-icon icon="${icon}" class="color-inactive"></ha-icon>`
         : `<ha-icon icon="${icon}" style="color: rgb(${colorStr});"></ha-icon>`;
       
       html += `
           <div class="pill pill-custom-${i}" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-entity="${entity}" data-custom-pill="${i}">
-            <div class="${iconWrapClass}" ${iconWrapStyle}>${iconEl}</div>
+            <div class="${iconClasses.join(' ')}" ${iconWrapStyle}>${iconEl}</div>
             <div class="pill-content">
               <span class="pill-val">${displayValue}</span>
               ${showLabel && label ? `<span class="pill-label">${label}</span>` : ''}
@@ -25983,7 +26098,7 @@ class PrismEnergyCard extends HTMLElement {
           <!-- Custom Pills (optional) -->
           ${this._renderAllOverlays()}
           ${this._renderStatusPill()}
-          ${this._renderExtraPill()}
+          ${this._renderExtraPills()}
           ${this._renderCustomPills()}
         </div>
 
@@ -26077,7 +26192,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.7 %c Extra pill & custom pill dim `,
+  `%c PRISM-ENERGY %c v1.3.8 %c Extra pills, colors & breathe `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'

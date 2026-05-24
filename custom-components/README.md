@@ -825,7 +825,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
-**Current version:** `1.3.7`
+**Current version:** `1.3.8`
 
 **Features:**
 - ✅ **Animated Energy Flows**: Visualizes energy flow between all components
@@ -852,6 +852,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 | **1.3.5** | Overlay glow, rotation angle, labels; inverter & battery temperature sensor overlays |
 | **1.3.6** | Tesla connected sensor overlay |
 | **1.3.7** | Extra config pill; custom pills grey when off/disabled |
+| **1.3.8** | Extra pill colors, second extra pill, custom pill breathe when on |
 
 ---
 
@@ -1061,8 +1062,14 @@ solar_module3_name: "House"
 | `status_show_label` | boolean | No | Show status label under value |
 | `extra_pill_entity` | entity | No | Second main pill (icon, label, position in Pill Positions) |
 | `extra_pill_icon` | icon | No | Extra pill icon |
+| `extra_pill_color` | color | No | Extra pill icon color |
 | `extra_pill_label` | string | No | Extra pill label (optional) |
 | `extra_pill_show_label` | boolean | No | Show extra pill label |
+| `extra_pill_2_entity` | entity | No | Second extra pill entity |
+| `extra_pill_2_icon` | icon | No | Extra pill 2 icon |
+| `extra_pill_2_color` | color | No | Extra pill 2 icon color |
+| `extra_pill_2_label` | string | No | Extra pill 2 label (optional) |
+| `extra_pill_2_show_label` | boolean | No | Show extra pill 2 label |
 | `autarky` | entity | No | *Legacy* – mapped to `status_entity` if `status_entity` is empty |
 | `image` | string | No | Path to house image (default: prism-energy-home.png) |
 | `enable_weather_effects` | boolean | No | Enable weather animations |
@@ -1072,7 +1079,7 @@ solar_module3_name: "House"
 | `max_grid_power` | number | No | Max grid W (default: 10000) |
 | `max_consumption` | number | No | Max consumption W (default: 10000) |
 
-**Pill positions & size** (`*_pill_top`, `*_pill_left`, `*_pill_scale` in % / scale): solar, grid, home, battery, ev, **status**, **extra**
+**Pill positions & size** (`*_pill_top`, `*_pill_left`, `*_pill_scale` in % / scale): solar, grid, home, battery, ev, **status**, **extra**, **extra 2**
 
 **Power overlays** (editor: *Power Overlays*): each overlay supports `*_enabled`, `*_label`, `*_show_label`, `*_icon`, `*_color`, `*_opacity`, `*_glow` (0–1), `*_angle` (degrees), `*_show_icon`, `*_top`, `*_left`, `*_scale`
 - `battery_charge_overlay_*` – charge power near battery (shown when charging)
@@ -1082,7 +1089,7 @@ solar_module3_name: "House"
 - `battery_temp_overlay_*` – battery temperature (`battery_temp_overlay_entity` sensor)
 - `tesla_connected_overlay_*` – Tesla connected state (`tesla_connected_overlay_entity`, binary_sensor or sensor)
 
-**Custom pills 1–8** (editor: *Custom Pills*): per pill `custom_pill_N_entity`, `_icon`, `_label`, `_color`, `_show_label`, `_dim_when_off`, `_top`, `_left`, `_scale`, `_tap_action`, `_navigation_path`, `_service`, `_service_data`
+**Custom pills 1–8** (editor: *Custom Pills*): per pill `custom_pill_N_entity`, `_icon`, `_label`, `_color`, `_show_label`, `_dim_when_off`, `_breathe_when_on`, `_top`, `_left`, `_scale`, `_tap_action`, `_navigation_path`, `_service`, `_service_data`
 
 | `custom_pill_N_tap_action` | Behavior |
 |----------------------------|----------|
