@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.8
+ * @version 1.3.9
  * @author BangerTech
  */
 
@@ -1654,7 +1654,11 @@ class PrismEnergyCard extends HTMLElement {
       iconWrap.style.setProperty('--pill-g', color.g);
       iconWrap.style.setProperty('--pill-b', color.b);
       iconWrap.style.background = `rgba(${colorStr}, 0.15)`;
-      iconWrap.style.boxShadow = isActive ? '' : `0 0 8px rgba(${colorStr}, 0.3)`;
+      if (isActive) {
+        iconWrap.style.removeProperty('box-shadow');
+      } else {
+        iconWrap.style.boxShadow = `0 0 8px rgba(${colorStr}, 0.3)`;
+      }
       iconEl.style.color = `rgb(${colorStr})`;
     }
   }
@@ -3529,6 +3533,36 @@ class PrismEnergyCard extends HTMLElement {
         }
         .color-inactive { color: rgba(255, 255, 255, 0.35); }
 
+        /* Custom pill breathe — uses --pill-r/g/b set on .pill-icon */
+        @keyframes custom-pill-glow-breathe {
+          0%, 100% {
+            box-shadow:
+              0 0 6px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.28),
+              0 0 12px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.12);
+          }
+          50% {
+            box-shadow:
+              0 0 14px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.55),
+              0 0 26px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.32);
+          }
+        }
+        @keyframes custom-pill-icon-glow-breathe {
+          0%, 100% {
+            filter: drop-shadow(0 0 2px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.45));
+          }
+          50% {
+            filter:
+              drop-shadow(0 0 5px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.9))
+              drop-shadow(0 0 10px rgba(var(--pill-r), var(--pill-g), var(--pill-b), 0.5));
+          }
+        }
+        .pill-icon.custom-pill-breathe {
+          animation: custom-pill-glow-breathe 2.2s ease-in-out infinite;
+        }
+        .pill-icon.custom-pill-breathe ha-icon {
+          animation: custom-pill-icon-glow-breathe 2.2s ease-in-out infinite;
+        }
+
         .power-overlay {
           position: absolute;
           z-index: 25;
@@ -3818,7 +3852,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.8 %c Extra pills, colors & breathe `,
+  `%c PRISM-ENERGY %c v1.3.9 %c Custom pill breathe glow fix `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
