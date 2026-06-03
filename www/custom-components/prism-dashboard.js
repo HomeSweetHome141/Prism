@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.10
+ * @version 1.4.0
  * @author BangerTech
  */
 
@@ -22822,6 +22822,17 @@ class PrismEnergyCard extends HTMLElement {
           label: "Show details section at bottom",
           default: true,
           selector: { boolean: {} }
+        },
+        {
+          name: "color_theme",
+          label: "Color theme",
+          selector: { select: { mode: "dropdown", options: [
+            { value: "default", label: "Default" },
+            { value: "neon", label: "Neon" },
+            { value: "soft", label: "Soft" },
+            { value: "mono", label: "Mono" },
+            { value: "ocean", label: "Ocean" }
+          ] } }
         },
         {
           name: "",
@@ -23713,6 +23724,7 @@ class PrismEnergyCard extends HTMLElement {
       autarky: config.autarky || "",
       image: config.image || "/local/community/Prism-Dashboard/images/prism-energy-home.png",
       show_details: config.show_details !== false,
+      color_theme: config.color_theme || "default",
       // Max values for progress bars (in Watts)
       max_solar_power: config.max_solar_power || 10000,
       max_grid_power: config.max_grid_power || 10000,
@@ -23898,14 +23910,19 @@ class PrismEnergyCard extends HTMLElement {
         houseImg.classList.toggle('night-mode', weatherData.isNight);
       }
       visualContainer.classList.toggle('night-mode', weatherData.isNight);
+      visualContainer.classList.toggle('day-mode', !weatherData.isNight);
     }
     
-    // Update weather label in header
+    // Update weather label + animated icon in header
     const weatherStatus = this.shadowRoot.querySelector('.weather-status');
     if (weatherStatus) {
       const dayNightLabel = this._getDayNightLabel(weatherData.isNight);
       const weatherTypeLabel = this._getWeatherLabel(weatherData);
       weatherStatus.textContent = `${dayNightLabel} - ${weatherTypeLabel}`;
+    }
+    const weatherIcon = this.shadowRoot.querySelector('.header-weather-icon');
+    if (weatherIcon) {
+      weatherIcon.setAttribute('icon', this._getWeatherIcon(weatherData));
     }
   }
 
@@ -23934,6 +23951,13 @@ class PrismEnergyCard extends HTMLElement {
     this._updateElement('.pill-home .pill-val', this._formatPower(homeConsumption));
     if (hasBattery) {
       this._updateElement('.pill-battery .pill-val', `${Math.round(batterySoc)}%`);
+      const batIcon = this.shadowRoot.querySelector('.pill-battery .pill-icon.soc-ring');
+      if (batIcon) batIcon.style.setProperty('--soc', Math.round(batterySoc));
+    }
+    if (this._config.ev_soc_entity) {
+      const evSocVal = this._getState(this._config.ev_soc_entity, 0);
+      const evIcon = this.shadowRoot.querySelector('.pill-ev .pill-icon.soc-ring');
+      if (evIcon) evIcon.style.setProperty('--soc', Math.round(evSocVal));
     }
     
     // Update pill labels dynamically
@@ -23943,6 +23967,20 @@ class PrismEnergyCard extends HTMLElement {
       this._updateElement('.pill-battery .pill-label', isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby'));
     }
     
+    // Color-grade grid/battery values (import/export, charge/discharge)
+    const gridVal = this.shadowRoot.querySelector('.pill-grid .pill-val');
+    if (gridVal) {
+      gridVal.classList.toggle('val-import', isGridImport);
+      gridVal.classList.toggle('val-export', isGridExport);
+    }
+    if (hasBattery) {
+      const batVal = this.shadowRoot.querySelector('.pill-battery .pill-val');
+      if (batVal) {
+        batVal.classList.toggle('val-charge', isBatteryCharging);
+        batVal.classList.toggle('val-discharge', isBatteryDischarging);
+      }
+    }
+
     // Update pill icon classes (active/inactive states)
     this._updatePillIconClass('.pill-solar .pill-icon', isSolarActive, 'bg-solar');
     this._updatePillIconClass('.pill-solar .pill-icon ha-icon', isSolarActive, 'color-solar');
@@ -24094,6 +24132,24 @@ class PrismEnergyCard extends HTMLElement {
     return { r: 34, g: 211, b: 238 }; // Default cyan
   }
 
+  // Convert hex color to "r, g, b" string
+  _hexToRgbStr(hex) {
+    const c = this._normalizeColor(hex);
+    return `${c.r}, ${c.g}, ${c.b}`;
+  }
+
+  // Color theme presets - returns hex colors for solar/grid/battery/home/ev
+  _getThemeColors() {
+    const themes = {
+      default: { solar: '#F59E0B', grid: '#3B82F6', battery: '#10B981', home: '#8B5CF6', ev: '#EC4899' },
+      neon:    { solar: '#FFD000', grid: '#00E5FF', battery: '#00FF9C', home: '#C724FF', ev: '#FF2D9B' },
+      soft:    { solar: '#EBB45A', grid: '#7BA7E0', battery: '#76C9A0', home: '#A98FD6', ev: '#E69BBE' },
+      mono:    { solar: '#E2E8F0', grid: '#94A3B8', battery: '#CBD5E1', home: '#B6BEC9', ev: '#E5E7EB' },
+      ocean:   { solar: '#38BDF8', grid: '#0EA5E9', battery: '#2DD4BF', home: '#6366F1', ev: '#22D3EE' }
+    };
+    const t = this._config?.color_theme || 'default';
+    return themes[t] || themes.default;
+  }
 
   _getOverlaySettings(prefix) {
     return {
@@ -24383,6 +24439,10 @@ class PrismEnergyCard extends HTMLElement {
     const el = this.shadowRoot.querySelector(selector);
     if (el && el.textContent !== value) {
       el.textContent = value;
+      // Brief cross-fade so value changes feel smooth
+      el.classList.remove('value-flash');
+      void el.offsetWidth; // force reflow to restart the animation
+      el.classList.add('value-flash');
     }
   }
 
@@ -24723,15 +24783,33 @@ class PrismEnergyCard extends HTMLElement {
     return `${Math.round(absWatts)} W`;
   }
 
-  // Generate animated flow path with real SVG filter glow (CodePen style)
+  // Generate animated flow path with real SVG filter glow + travelling particles
   _renderFlow(path, color, active, reverse = false, className = '') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
-    // Create unique filter ID based on color
-    const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
-    
+    // Unique id for the motion reference path (className is unique per flow)
+    const pathId = `mp-${className || color.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+    // Travelling particles (glowing dots that ride along the path)
+    const dur = 3;
+    const particleCount = 3;
+    const motionDir = reverse ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '';
+    let particles = '';
+    for (let i = 0; i < particleCount; i++) {
+      const begin = `-${((dur / particleCount) * i).toFixed(2)}s`;
+      particles += `
+        <circle class="flow-particle" r="0.85" fill="${color}" filter="url(#softEdge)">
+          <animateMotion dur="${dur}s" repeatCount="indefinite" begin="${begin}" ${motionDir}>
+            <mpath href="#${pathId}" />
+          </animateMotion>
+        </circle>`;
+    }
+
     return `
       <g class="flow-group ${className}" style="display: ${display};">
+        <!-- Hidden reference path for particle motion -->
+        <path id="${pathId}" d="${path}" fill="none" stroke="none" />
+
         <!-- Background track (pulsing, async) -->
         <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
         
@@ -24742,6 +24820,9 @@ class PrismEnergyCard extends HTMLElement {
         <!-- Bright core with soft edges -->
         <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-opacity="0.85" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#softEdge)" />
+
+        <!-- Travelling energy particles -->
+        ${particles}
       </g>
     `;
   }
@@ -24754,13 +24835,15 @@ class PrismEnergyCard extends HTMLElement {
     
     if (isNight) {
       if (weatherType === 'cloudy') return 'mdi:weather-night-partly-cloudy';
+      if (weatherType === 'partlycloudy') return 'mdi:weather-night-partly-cloudy';
       if (weatherType === 'rainy') return 'mdi:weather-rainy';
       if (weatherType === 'snowy') return 'mdi:weather-snowy';
       if (weatherType === 'foggy') return 'mdi:weather-fog';
       if (weatherType === 'stormy') return 'mdi:weather-lightning';
       return 'mdi:weather-night';
     } else {
-      if (weatherType === 'cloudy') return 'mdi:weather-partly-cloudy';
+      if (weatherType === 'cloudy') return 'mdi:weather-cloudy';
+      if (weatherType === 'partlycloudy') return 'mdi:weather-partly-cloudy';
       if (weatherType === 'rainy') return 'mdi:weather-rainy';
       if (weatherType === 'snowy') return 'mdi:weather-snowy';
       if (weatherType === 'foggy') return 'mdi:weather-fog';
@@ -24782,6 +24865,7 @@ class PrismEnergyCard extends HTMLElement {
       'sunny': 'Sonnig',
       'clear': 'Klar',
       'cloudy': 'BewÃ¶lkt',
+      'partlycloudy': 'Teilweise bewÃ¶lkt',
       'rainy': 'Regen',
       'snowy': 'Schnee',
       'foggy': 'Nebel',
@@ -24791,6 +24875,7 @@ class PrismEnergyCard extends HTMLElement {
       'sunny': 'Sunny',
       'clear': 'Clear',
       'cloudy': 'Cloudy',
+      'partlycloudy': 'Partly Cloudy',
       'rainy': 'Rain',
       'snowy': 'Snow',
       'foggy': 'Fog',
@@ -24878,6 +24963,8 @@ class PrismEnergyCard extends HTMLElement {
       weatherType = 'snowy';
     } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist') || weatherCondition.includes('haze')) {
       weatherType = 'foggy';
+    } else if (weatherCondition.includes('partlycloudy') || weatherCondition.includes('partly')) {
+      weatherType = 'partlycloudy';
     } else if (weatherCondition.includes('cloud') || weatherCondition.includes('overcast')) {
       weatherType = 'cloudy';
     } else if (weatherCondition.includes('clear') || weatherCondition.includes('sunny')) {
@@ -24974,10 +25061,15 @@ class PrismEnergyCard extends HTMLElement {
         `;
       }
     } else {
-      // Day effects: sun glow - more subtle
-      if (weatherType === 'sunny' || weatherType === 'clear') {
+      // Day effects: sun glow - more subtle (also peeks through on partly cloudy)
+      if (weatherType === 'sunny' || weatherType === 'clear' || weatherType === 'partlycloudy') {
         html += '<div class="sun-glow"></div>';
       }
+    }
+
+    // Rain puddle / wet-ground shimmer at the base during rain or storms
+    if (weatherType === 'rainy' || weatherType === 'stormy') {
+      html += '<div class="rain-puddle"></div>';
     }
 
     // Sunrise/Sunset gradient overlay
@@ -24987,15 +25079,16 @@ class PrismEnergyCard extends HTMLElement {
       html += '<div class="sunset-overlay"></div>';
     }
 
-    // Clouds based on cloud coverage or weather type
+    // Clouds based on cloud coverage or weather type (now allowed at night, dimmed)
     const cloudCoverage = weatherData.cloudCoverage;
-    const showClouds = (weatherType === 'cloudy' || (cloudCoverage !== null && cloudCoverage > 0)) && 
-                       weatherType !== 'foggy' && !isNight;
+    const showClouds = (weatherType === 'cloudy' || weatherType === 'partlycloudy' ||
+                        (cloudCoverage !== null && cloudCoverage > 0)) &&
+                       weatherType !== 'foggy';
     
     if (showClouds) {
-      // Determine cloud count based on coverage (if available) or default to all
-      let staticCount = 3;
-      let movingCount = 4;
+      // Determine cloud count based on coverage (if available) or weather type
+      let staticCount = weatherType === 'partlycloudy' ? 1 : 3;
+      let movingCount = weatherType === 'partlycloudy' ? 2 : 4;
       
       if (cloudCoverage !== null) {
         // Scale clouds based on coverage percentage
@@ -25014,16 +25107,18 @@ class PrismEnergyCard extends HTMLElement {
         }
       }
       
+      // Dim clouds at night
+      const nightCls = isNight ? ' cloud-night' : '';
       html += '<!-- Clouds based on coverage -->';
       // Static clouds
-      if (staticCount >= 1) html += '<div class="cloud cloud-static cloud-static-1"></div>';
-      if (staticCount >= 2) html += '<div class="cloud cloud-static cloud-static-2"></div>';
-      if (staticCount >= 3) html += '<div class="cloud cloud-static cloud-static-3"></div>';
+      if (staticCount >= 1) html += `<div class="cloud cloud-static cloud-static-1${nightCls}"></div>`;
+      if (staticCount >= 2) html += `<div class="cloud cloud-static cloud-static-2${nightCls}"></div>`;
+      if (staticCount >= 3) html += `<div class="cloud cloud-static cloud-static-3${nightCls}"></div>`;
       // Moving clouds
-      if (movingCount >= 1) html += '<div class="cloud cloud-moving cloud-1"></div>';
-      if (movingCount >= 2) html += '<div class="cloud cloud-moving cloud-2"></div>';
-      if (movingCount >= 3) html += '<div class="cloud cloud-moving cloud-3"></div>';
-      if (movingCount >= 4) html += '<div class="cloud cloud-moving cloud-4"></div>';
+      if (movingCount >= 1) html += `<div class="cloud cloud-moving cloud-1${nightCls}"></div>`;
+      if (movingCount >= 2) html += `<div class="cloud cloud-moving cloud-2${nightCls}"></div>`;
+      if (movingCount >= 3) html += `<div class="cloud cloud-moving cloud-3${nightCls}"></div>`;
+      if (movingCount >= 4) html += `<div class="cloud cloud-moving cloud-4${nightCls}"></div>`;
     }
 
     html += '</div>';
@@ -25062,6 +25157,38 @@ class PrismEnergyCard extends HTMLElement {
         5% { opacity: 0.7; }
         95% { opacity: 0.7; }
         100% { transform: translateY(100vh); opacity: 0; }
+      }
+
+      /* Wet-ground shimmer at the base during rain */
+      .rain-puddle {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 24%;
+        background:
+          linear-gradient(to top, rgba(130, 160, 200, 0.22) 0%, rgba(130, 160, 200, 0.08) 45%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+        mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+        pointer-events: none;
+        z-index: 1;
+        animation: puddle-shimmer 5s ease-in-out infinite;
+      }
+      .rain-puddle::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, transparent 30%, rgba(190, 215, 245, 0.18) 50%, transparent 70%);
+        transform: translateX(-40%);
+        animation: puddle-sheen 7s ease-in-out infinite;
+      }
+      @keyframes puddle-shimmer {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.9; }
+      }
+      @keyframes puddle-sheen {
+        0%, 100% { transform: translateX(-40%); }
+        50% { transform: translateX(40%); }
       }
 
       /* Snow Animation (optimized for mobile performance) */
@@ -25209,18 +25336,25 @@ class PrismEnergyCard extends HTMLElement {
         pointer-events: none;
       }
 
-      /* Lightning Effect - below UI elements */
+      /* Lightning Effect - flash from the top with thunder glow */
       .lightning {
         position: absolute;
         inset: 0;
-        background: rgba(255, 255, 255, 0);
-        animation: lightning-flash 8s infinite;
-        z-index: 0;
+        background: radial-gradient(140% 90% at 50% -10%, rgba(235, 242, 255, 1) 0%, rgba(190, 215, 255, 1) 35%, transparent 70%);
+        opacity: 0;
+        animation: lightning-flash 6s infinite;
+        z-index: 1;
         pointer-events: none;
+        mix-blend-mode: screen;
       }
       @keyframes lightning-flash {
-        0%, 89%, 91%, 93%, 100% { background: rgba(255, 255, 255, 0); }
-        90%, 92% { background: rgba(255, 255, 255, 0.3); }
+        0%, 84%, 100% { opacity: 0; }
+        85% { opacity: 0.65; }
+        86% { opacity: 0.1; }
+        88% { opacity: 0.9; }
+        90% { opacity: 0.25; }
+        92% { opacity: 0.55; }
+        94% { opacity: 0; }
       }
 
       /* Clouds - subtle, only in top area, below UI */
@@ -25323,12 +25457,34 @@ class PrismEnergyCard extends HTMLElement {
         75% { transform: translateX(-5px) translateY(-2px); }
       }
 
+      /* Dimmed, cooler clouds at night */
+      .cloud.cloud-night {
+        opacity: 0.22;
+        filter: blur(3px) brightness(0.5) saturate(0.7);
+        background: linear-gradient(
+          to bottom,
+          rgba(180, 190, 210, 0.3) 0%,
+          rgba(150, 160, 185, 0.2) 100%
+        );
+      }
+
       /* Night mode house dimming */
       .house-img.night-mode {
         filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5)) brightness(0.55) saturate(0.85);
         transition: filter 1s ease;
       }
       
+      /* Daytime sky tint - subtle blue wash at top */
+      .visual-container.day-mode {
+        background: linear-gradient(
+          to bottom,
+          rgba(125, 175, 235, 0.18) 0%,
+          rgba(150, 195, 240, 0.06) 28%,
+          transparent 55%
+        );
+        transition: background 1s ease;
+      }
+
       /* Night background adjustment - subtle darkening at top */
       .visual-container.night-mode {
         background: linear-gradient(
@@ -25375,6 +25531,10 @@ class PrismEnergyCard extends HTMLElement {
     
     if (isBatteryCharging) batteryIcon = "mdi:battery-charging";
 
+    // EV SOC for the pill ring (if a SOC entity is configured)
+    const hasEvSoc = !!this._config.ev_soc_entity;
+    const evSoc = hasEvSoc ? this._getState(this._config.ev_soc_entity, 0) : 0;
+
     // Get pill positions and scale from config (with defaults)
     const pillPos = {
       solar: { x: this._config.solar_pill_left, y: this._config.solar_pill_top, scale: this._config.solar_pill_scale },
@@ -25409,13 +25569,14 @@ class PrismEnergyCard extends HTMLElement {
       homeToEv: `M ${pillPos.home.x} ${pillPos.home.y} Q ${midPoint(pillPos.home, pillPos.ev).x} ${midPoint(pillPos.home, pillPos.ev).y} ${pillPos.ev.x} ${pillPos.ev.y}`
     };
 
-    // Colors
-    const colors = {
-      solar: '#F59E0B',
-      grid: '#3B82F6',
-      battery: '#10B981',
-      home: '#8B5CF6',
-      ev: '#EC4899'
+    // Colors (theme-aware)
+    const colors = this._getThemeColors();
+    const rgbStr = {
+      solar: this._hexToRgbStr(colors.solar),
+      grid: this._hexToRgbStr(colors.grid),
+      battery: this._hexToRgbStr(colors.battery),
+      home: this._hexToRgbStr(colors.home),
+      ev: this._hexToRgbStr(colors.ev)
     };
 
     this.shadowRoot.innerHTML = `
@@ -25531,6 +25692,23 @@ class PrismEnergyCard extends HTMLElement {
           margin: 0 6px;
           color: rgba(255, 255, 255, 0.3);
           font-size: 0.65rem;
+        }
+
+        .header-weather-icon {
+          --mdc-icon-size: 15px;
+          width: 15px;
+          height: 15px;
+          margin-right: 4px;
+          color: rgba(255, 255, 255, 0.65);
+          animation: weather-bob 3.6s ease-in-out infinite;
+          transform-origin: center;
+        }
+        @keyframes weather-bob {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-1.5px) rotate(-5deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .header-weather-icon { animation: none; }
         }
         
         .weather-status {
@@ -25751,6 +25929,11 @@ class PrismEnergyCard extends HTMLElement {
           animation: flow-animation-reverse 3s linear infinite;
         }
 
+        .flow-particle {
+          opacity: 0.9;
+          will-change: transform;
+        }
+
         /* Data Pills - Inlet Style */
         .pill {
           --pill-scale: 1;
@@ -25758,22 +25941,33 @@ class PrismEnergyCard extends HTMLElement {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: rgba(20, 20, 20, 0.7);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: linear-gradient(145deg, rgba(42, 44, 50, 0.72), rgba(16, 17, 20, 0.74));
+          backdrop-filter: blur(16px) saturate(1.3);
+          -webkit-backdrop-filter: blur(16px) saturate(1.3);
           border-radius: 999px;
           padding: 6px 10px 6px 6px;
           box-shadow: 
-            inset 2px 2px 4px rgba(0, 0, 0, 0.6),
-            inset -1px -1px 2px rgba(255, 255, 255, 0.03),
-            0 4px 8px rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-top: 1px solid rgba(0, 0, 0, 0.3);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            inset 2px 2px 4px rgba(0, 0, 0, 0.55),
+            inset -1px -1px 2px rgba(255, 255, 255, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 6px 16px rgba(0, 0, 0, 0.35);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-top: 1px solid rgba(255, 255, 255, 0.16);
+          border-bottom: 1px solid rgba(0, 0, 0, 0.35);
           z-index: 20;
           transform: translate(-50%, -50%) scale(var(--pill-scale));
           white-space: nowrap;
           transition: all 0.3s ease;
+          animation: pill-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes pill-enter {
+          from { opacity: 0; translate: 0 10px; }
+          to { opacity: 1; translate: 0 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pill { animation: none; }
         }
         
         .pill:hover {
@@ -25806,6 +26000,25 @@ class PrismEnergyCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          position: relative;
+        }
+
+        /* SOC arc ring around battery / EV pill icons */
+        .pill-icon.soc-ring::after {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          background: conic-gradient(
+            from -90deg,
+            var(--soc-color, #10B981) calc(var(--soc, 0) * 1%),
+            rgba(255, 255, 255, 0.12) 0
+          );
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px));
+          pointer-events: none;
+          opacity: 0.9;
+          transition: background 0.6s ease;
         }
         
         .pill-icon ha-icon {
@@ -25824,6 +26037,23 @@ class PrismEnergyCard extends HTMLElement {
           font-weight: 700;
           color: rgba(255, 255, 255, 0.95);
           font-family: "SF Mono", "Monaco", "Inconsolata", monospace;
+          transition: color 0.4s ease;
+        }
+
+        /* Color-graded values */
+        .pill-val.val-import { color: #f87171; }
+        .pill-val.val-export { color: #4ade80; }
+        .pill-val.val-charge { color: #4ade80; }
+        .pill-val.val-discharge { color: #fbbf24; }
+
+        /* Smooth cross-fade when a value changes */
+        .value-flash { animation: value-flash 0.45s ease; }
+        @keyframes value-flash {
+          0% { opacity: 0.3; }
+          100% { opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .value-flash { animation: none; }
         }
         
         .pill-label {
@@ -25876,34 +26106,34 @@ class PrismEnergyCard extends HTMLElement {
           }
         }
 
-        /* Pill Icon Colors */
+        /* Pill Icon Colors (theme-aware) */
         .bg-solar {
-          background: rgba(245, 158, 11, 0.15);
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+          background: rgba(${rgbStr.solar}, 0.15);
+          box-shadow: 0 0 8px rgba(${rgbStr.solar}, 0.3);
         }
         .color-solar { color: ${colors.solar}; }
         
         .bg-grid {
-          background: rgba(59, 130, 246, 0.15);
-          box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+          background: rgba(${rgbStr.grid}, 0.15);
+          box-shadow: 0 0 8px rgba(${rgbStr.grid}, 0.3);
         }
         .color-grid { color: ${colors.grid}; }
         
         .bg-battery {
-          background: rgba(16, 185, 129, 0.15);
-          box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+          background: rgba(${rgbStr.battery}, 0.15);
+          box-shadow: 0 0 8px rgba(${rgbStr.battery}, 0.3);
         }
         .color-battery { color: ${colors.battery}; }
         
         .bg-home {
-          background: rgba(139, 92, 246, 0.15);
-          box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+          background: rgba(${rgbStr.home}, 0.15);
+          box-shadow: 0 0 8px rgba(${rgbStr.home}, 0.3);
         }
         .color-home { color: ${colors.home}; }
         
         .bg-ev {
-          background: rgba(236, 72, 153, 0.15);
-          box-shadow: 0 0 8px rgba(236, 72, 153, 0.3);
+          background: rgba(${rgbStr.ev}, 0.15);
+          box-shadow: 0 0 8px rgba(${rgbStr.ev}, 0.3);
         }
         .color-ev { color: ${colors.ev}; }
         
@@ -26023,6 +26253,7 @@ class PrismEnergyCard extends HTMLElement {
                 <span class="live-text">Live</span>
                 ${weatherData.enabled ? `
                 <span class="weather-separator">|</span>
+                <ha-icon class="header-weather-icon" icon="${this._getWeatherIcon(weatherData)}"></ha-icon>
                 <span class="weather-status">${this._getDayNightLabel(weatherData.isNight)} - ${this._getWeatherLabel(weatherData)}</span>
                 ` : ''}
               </div>
@@ -26031,7 +26262,7 @@ class PrismEnergyCard extends HTMLElement {
         </div>
 
         <!-- Main Visual -->
-        <div class="visual-container ${weatherData.enabled && weatherData.isNight ? 'night-mode' : ''}">
+        <div class="visual-container ${weatherData.enabled ? (weatherData.isNight ? 'night-mode' : 'day-mode') : ''}">
           ${weatherData.enabled ? this._renderWeatherEffects(weatherData) : ''}
           <img src="${houseImg}" class="house-img ${weatherData.enabled && weatherData.isNight ? 'night-mode' : ''}" alt="Energy Home" />
           <div class="bottom-gradient"></div>
@@ -26093,7 +26324,7 @@ class PrismEnergyCard extends HTMLElement {
               <ha-icon icon="mdi:transmission-tower" class="${isGridImport || isGridExport ? 'color-grid' : 'color-inactive'}"></ha-icon>
             </div>
             <div class="pill-content">
-              <span class="pill-val">${this._formatPower(gridPowerDisplay)}</span>
+              <span class="pill-val ${isGridExport ? 'val-export' : isGridImport ? 'val-import' : ''}">${this._formatPower(gridPowerDisplay)}</span>
               <span class="pill-label">${isGridExport ? this._t('export') : isGridImport ? this._t('import') : this._t('neutral')}</span>
             </div>
           </div>
@@ -26112,11 +26343,11 @@ class PrismEnergyCard extends HTMLElement {
           <!-- Battery Pill (Right - Battery Storage) - Clickable for history -->
           ${hasBattery ? `
           <div class="pill pill-battery" style="top: ${pillPos.battery.y}%; left: ${pillPos.battery.x}%; --pill-scale: ${pillPos.battery.scale};" data-entity="${this._config.battery_soc}">
-            <div class="pill-icon ${isBatteryCharging || isBatteryDischarging ? 'bg-battery' : 'bg-inactive'}">
+            <div class="pill-icon soc-ring ${isBatteryCharging || isBatteryDischarging ? 'bg-battery' : 'bg-inactive'}" style="--soc: ${Math.round(batterySoc)}; --soc-color: ${colors.battery};">
               <ha-icon icon="${batteryIcon}" class="${isBatteryCharging || isBatteryDischarging ? 'color-battery' : 'color-inactive'}"></ha-icon>
             </div>
             <div class="pill-content">
-              <span class="pill-val">${Math.round(batterySoc)}%</span>
+              <span class="pill-val ${isBatteryCharging ? 'val-charge' : isBatteryDischarging ? 'val-discharge' : ''}">${Math.round(batterySoc)}%</span>
               <span class="pill-label">${isBatteryCharging ? this._t('charging') : isBatteryDischarging ? this._t('discharging') : this._t('standby')}</span>
             </div>
           </div>
@@ -26125,7 +26356,7 @@ class PrismEnergyCard extends HTMLElement {
           <!-- EV Pill (Bottom Left - Carport) - Clickable for history -->
           ${hasEV ? `
           <div class="pill pill-ev" style="top: ${pillPos.ev.y}%; left: ${pillPos.ev.x}%; --pill-scale: ${pillPos.ev.scale};" data-entity="${this._config.ev_power}">
-            <div class="pill-icon ${isEvCharging ? 'bg-ev' : 'bg-inactive'}">
+            <div class="pill-icon ${hasEvSoc ? 'soc-ring' : ''} ${isEvCharging ? 'bg-ev' : 'bg-inactive'}" ${hasEvSoc ? `style="--soc: ${Math.round(evSoc)}; --soc-color: ${colors.ev};"` : ''}>
               <ha-icon icon="mdi:car-electric" class="${isEvCharging ? 'color-ev' : 'color-inactive'}"></ha-icon>
             </div>
             <div class="pill-content">
@@ -26232,7 +26463,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.10 %c Night clear label & brighter sun glow `,
+  `%c PRISM-ENERGY %c v1.4.0 %c Visual overhaul: particles, themes, weather `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
