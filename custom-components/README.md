@@ -825,7 +825,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
-**Current version:** `1.3.9`
+**Current version:** `1.3.10`
 
 **Features:**
 - ✅ **Animated Energy Flows**: Visualizes energy flow between all components
@@ -854,6 +854,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 | **1.3.7** | Extra config pill; custom pills grey when off/disabled |
 | **1.3.8** | Extra pill colors, second extra pill, custom pill breathe when on |
 | **1.3.9** | Fix custom pill breathe animation (pulsing icon glow when on) |
+| **1.3.10** | Show "Clear" at night instead of "Sunny"; brighter sun glow |
 
 ---
 

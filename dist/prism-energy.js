@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.3.9
+ * @version 1.3.10
  * @author BangerTech
  */
 
@@ -2424,7 +2424,13 @@ class PrismEnergyCard extends HTMLElement {
       'windy': 'Windy'
     };
     
-    return labels[weatherData.weatherType] || weatherData.weatherType;
+    // At night, a "sunny" condition from the weather entity really means clear sky
+    let type = weatherData.weatherType;
+    if (weatherData.isNight && type === 'sunny') {
+      type = 'clear';
+    }
+
+    return labels[type] || type;
   }
 
   // Get day/night label based on HA language
@@ -2782,24 +2788,24 @@ class PrismEnergyCard extends HTMLElement {
       /* Sun Glow - subtle, positioned in top area */
       .sun-glow {
         position: absolute;
-        top: 50px;
-        right: 100px;
-        width: 150px;
-        height: 150px;
+        top: 40px;
+        right: 90px;
+        width: 190px;
+        height: 190px;
         background: radial-gradient(
           circle at center,
-          rgba(255, 200, 50, 0.2) 0%,
-          rgba(255, 180, 50, 0.1) 30%,
-          rgba(255, 160, 50, 0.05) 50%,
-          transparent 70%
+          rgba(255, 205, 60, 0.32) 0%,
+          rgba(255, 185, 55, 0.18) 30%,
+          rgba(255, 165, 50, 0.09) 50%,
+          transparent 72%
         );
         filter: blur(25px);
         z-index: 0;
         animation: sun-pulse 10s ease-in-out infinite;
       }
       @keyframes sun-pulse {
-        0%, 100% { transform: scale(1); opacity: 0.6; }
-        50% { transform: scale(1.05); opacity: 0.8; }
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.07); opacity: 1; }
       }
 
       /* Sunrise/Sunset Overlays - subtle gradients, below UI */
@@ -3852,7 +3858,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.3.9 %c Custom pill breathe glow fix `,
+  `%c PRISM-ENERGY %c v1.3.10 %c Night clear label & brighter sun glow `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
