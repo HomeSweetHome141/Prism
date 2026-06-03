@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.4.0
+ * @version 1.4.1
  * @author BangerTech
  */
 
@@ -22994,6 +22994,47 @@ class PrismEnergyCard extends HTMLElement {
               name: "cloud_coverage_entity",
               label: "Cloud Coverage Sensor (optional, e.g. sensor.openweathermap_cloud_coverage)",
               selector: { entity: { domain: "sensor" } }
+            },
+            { name: "", type: "divider" },
+            {
+              name: "manual_weather_mode",
+              label: "Manual Weather (override live data)",
+              selector: { select: { mode: "dropdown", options: [
+                { value: "auto", label: "Auto (use live weather)" },
+                { value: "day", label: "Force Day effect" },
+                { value: "night", label: "Force Night effect" }
+              ] } }
+            },
+            {
+              name: "manual_weather_day",
+              label: "Day effect (used when Force Day is selected)",
+              selector: { select: { mode: "dropdown", options: [
+                { value: "sunny", label: "Sunny" },
+                { value: "clear", label: "Clear" },
+                { value: "partlycloudy", label: "Partly Cloudy" },
+                { value: "cloudy", label: "Cloudy" },
+                { value: "rainy", label: "Rain" },
+                { value: "stormy", label: "Storm (lightning)" },
+                { value: "snowy", label: "Snow" },
+                { value: "hail", label: "Hail" },
+                { value: "foggy", label: "Fog" },
+                { value: "windy", label: "Windy" }
+              ] } }
+            },
+            {
+              name: "manual_weather_night",
+              label: "Night effect (used when Force Night is selected)",
+              selector: { select: { mode: "dropdown", options: [
+                { value: "clear", label: "Clear (stars + moon)" },
+                { value: "partlycloudy", label: "Partly Cloudy" },
+                { value: "cloudy", label: "Cloudy" },
+                { value: "rainy", label: "Rain" },
+                { value: "stormy", label: "Storm (lightning)" },
+                { value: "snowy", label: "Snow" },
+                { value: "hail", label: "Hail" },
+                { value: "foggy", label: "Fog" },
+                { value: "windy", label: "Windy" }
+              ] } }
             }
           ]
         },
@@ -23733,6 +23774,10 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: config.enable_weather_effects || false,
       weather_entity: config.weather_entity || "",
       cloud_coverage_entity: config.cloud_coverage_entity || "",
+      // Manual weather override
+      manual_weather_mode: config.manual_weather_mode || "auto",
+      manual_weather_day: config.manual_weather_day || "sunny",
+      manual_weather_night: config.manual_weather_night || "clear",
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -23883,7 +23928,8 @@ class PrismEnergyCard extends HTMLElement {
 
   // Check if weather conditions changed and update only weather elements
   _updateWeatherIfChanged() {
-    if (!this._config.enable_weather_effects || !this._config.weather_entity) return;
+    const manual = this._config.manual_weather_mode === 'day' || this._config.manual_weather_mode === 'night';
+    if (!this._config.enable_weather_effects || (!this._config.weather_entity && !manual)) return;
     
     const weatherData = this._getWeatherData();
     // Include cloud coverage in key (rounded to 10% steps to avoid too frequent updates)
@@ -24838,14 +24884,17 @@ class PrismEnergyCard extends HTMLElement {
       if (weatherType === 'partlycloudy') return 'mdi:weather-night-partly-cloudy';
       if (weatherType === 'rainy') return 'mdi:weather-rainy';
       if (weatherType === 'snowy') return 'mdi:weather-snowy';
+      if (weatherType === 'hail') return 'mdi:weather-hail';
       if (weatherType === 'foggy') return 'mdi:weather-fog';
       if (weatherType === 'stormy') return 'mdi:weather-lightning';
+      if (weatherType === 'windy') return 'mdi:weather-windy';
       return 'mdi:weather-night';
     } else {
       if (weatherType === 'cloudy') return 'mdi:weather-cloudy';
       if (weatherType === 'partlycloudy') return 'mdi:weather-partly-cloudy';
       if (weatherType === 'rainy') return 'mdi:weather-rainy';
       if (weatherType === 'snowy') return 'mdi:weather-snowy';
+      if (weatherType === 'hail') return 'mdi:weather-hail';
       if (weatherType === 'foggy') return 'mdi:weather-fog';
       if (weatherType === 'stormy') return 'mdi:weather-lightning';
       if (weatherType === 'windy') return 'mdi:weather-windy';
@@ -24868,6 +24917,7 @@ class PrismEnergyCard extends HTMLElement {
       'partlycloudy': 'Teilweise bewÃ¶lkt',
       'rainy': 'Regen',
       'snowy': 'Schnee',
+      'hail': 'Hagel',
       'foggy': 'Nebel',
       'stormy': 'Gewitter',
       'windy': 'Windig'
@@ -24878,6 +24928,7 @@ class PrismEnergyCard extends HTMLElement {
       'partlycloudy': 'Partly Cloudy',
       'rainy': 'Rain',
       'snowy': 'Snow',
+      'hail': 'Hail',
       'foggy': 'Fog',
       'stormy': 'Storm',
       'windy': 'Windy'
@@ -24938,7 +24989,35 @@ class PrismEnergyCard extends HTMLElement {
 
   // Get weather data from Home Assistant
   _getWeatherData() {
-    if (!this._config.enable_weather_effects || !this._config.weather_entity || !this._hass) {
+    if (!this._config.enable_weather_effects || !this._hass) {
+      return { enabled: false };
+    }
+
+    // Manual override - force a specific day or night effect (no weather entity needed)
+    const manualMode = this._config.manual_weather_mode || 'auto';
+    if (manualMode === 'day' || manualMode === 'night') {
+      const isNight = manualMode === 'night';
+      const weatherType = isNight
+        ? (this._config.manual_weather_night || 'clear')
+        : (this._config.manual_weather_day || 'sunny');
+      let cloudCoverage = null;
+      if (this._config.cloud_coverage_entity) {
+        const cloudState = this._hass.states[this._config.cloud_coverage_entity];
+        if (cloudState) cloudCoverage = parseFloat(cloudState.state) || 0;
+      }
+      return {
+        enabled: true,
+        weatherType,
+        isNight,
+        isSunrise: false,
+        isSunset: false,
+        condition: weatherType,
+        cloudCoverage
+      };
+    }
+
+    // Auto mode requires a weather entity
+    if (!this._config.weather_entity) {
       return { enabled: false };
     }
 
@@ -24957,9 +25036,11 @@ class PrismEnergyCard extends HTMLElement {
 
     // Map HA weather states to animation types
     let weatherType = 'clear';
-    if (weatherCondition.includes('rain') || weatherCondition.includes('drizzle') || weatherCondition.includes('shower')) {
+    if (weatherCondition.includes('hail')) {
+      weatherType = 'hail';
+    } else if (weatherCondition.includes('rain') || weatherCondition.includes('drizzle') || weatherCondition.includes('shower')) {
       weatherType = 'rainy';
-    } else if (weatherCondition.includes('snow') || weatherCondition.includes('sleet') || weatherCondition.includes('hail')) {
+    } else if (weatherCondition.includes('snow') || weatherCondition.includes('sleet')) {
       weatherType = 'snowy';
     } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist') || weatherCondition.includes('haze')) {
       weatherType = 'foggy';
@@ -25024,11 +25105,39 @@ class PrismEnergyCard extends HTMLElement {
       }
     }
 
+    // Hail effect (fast bouncing ice pellets)
+    if (weatherType === 'hail') {
+      for (let i = 0; i < 20; i++) {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 1.5;
+        const duration = 0.5 + Math.random() * 0.3;
+        const size = 4 + Math.random() * 3;
+        html += `<div class="hail-stone" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
+      }
+    }
+
     // Fog effect
     if (weatherType === 'foggy') {
       html += `<div class="fog-layer fog-1"></div>`;
       html += `<div class="fog-layer fog-2"></div>`;
       html += `<div class="fog-layer fog-3"></div>`;
+    }
+
+    // Wind effect (sweeping streaks + drifting leaves)
+    if (weatherType === 'windy') {
+      for (let i = 0; i < 6; i++) {
+        const top = 10 + Math.random() * 60;
+        const delay = Math.random() * 4;
+        const duration = 2.5 + Math.random() * 2;
+        const width = 40 + Math.random() * 60;
+        html += `<div class="wind-streak" style="top: ${top}%; width: ${width}px; animation-delay: ${delay}s; animation-duration: ${duration}s;"></div>`;
+      }
+      for (let i = 0; i < 4; i++) {
+        const top = 20 + Math.random() * 55;
+        const delay = Math.random() * 5;
+        const duration = 4 + Math.random() * 3;
+        html += `<div class="wind-leaf" style="top: ${top}%; animation-delay: ${delay}s; animation-duration: ${duration}s;"></div>`;
+      }
     }
 
     // Lightning effect for storms
@@ -25217,6 +25326,61 @@ class PrismEnergyCard extends HTMLElement {
           transform: translateY(100vh) translateX(-20px); 
           opacity: 0; 
         }
+      }
+
+      /* Hail Animation - fast, hard ice pellets */
+      .hail-stone {
+        position: absolute;
+        top: 0;
+        background: radial-gradient(circle at 35% 30%, #ffffff, #cdd6e0);
+        border-radius: 50%;
+        opacity: 0;
+        will-change: transform, opacity;
+        contain: layout style paint;
+        box-shadow: 0 0 3px rgba(255, 255, 255, 0.6);
+        animation: hail-fall linear infinite;
+      }
+      @keyframes hail-fall {
+        0% { transform: translateY(-20px) translateX(0); opacity: 0; }
+        5% { opacity: 0.95; }
+        85% { opacity: 0.95; }
+        100% { transform: translateY(100vh) translateX(-15px); opacity: 0; }
+      }
+
+      /* Wind Animation - sweeping streaks + drifting leaves */
+      .wind-streak {
+        position: absolute;
+        left: -120px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        border-radius: 2px;
+        opacity: 0;
+        will-change: transform, opacity;
+        animation: wind-blow linear infinite;
+      }
+      @keyframes wind-blow {
+        0% { transform: translateX(0); opacity: 0; }
+        10% { opacity: 0.7; }
+        90% { opacity: 0.7; }
+        100% { transform: translateX(120vw); opacity: 0; }
+      }
+      .wind-leaf {
+        position: absolute;
+        left: -20px;
+        width: 8px;
+        height: 8px;
+        background: rgba(155, 185, 120, 0.75);
+        border-radius: 0 50% 50% 50%;
+        opacity: 0;
+        will-change: transform, opacity;
+        animation: wind-leaf-blow linear infinite;
+      }
+      @keyframes wind-leaf-blow {
+        0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.85; }
+        50% { transform: translate(60vw, -15px) rotate(180deg); }
+        90% { opacity: 0.85; }
+        100% { transform: translate(120vw, 12px) rotate(360deg); opacity: 0; }
       }
 
       /* Fog Animation */
@@ -26463,7 +26627,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.4.0 %c Visual overhaul: particles, themes, weather `,
+  `%c PRISM-ENERGY %c v1.4.1 %c Manual weather override + wind & hail `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
