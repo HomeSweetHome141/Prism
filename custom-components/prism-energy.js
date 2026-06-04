@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.4.1
+ * @version 1.4.2
  * @author BangerTech
  */
 
@@ -2463,7 +2463,8 @@ class PrismEnergyCard extends HTMLElement {
     const pathId = `mp-${className || color.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     // Travelling particles (glowing dots that ride along the path)
-    const dur = 3;
+    // Slower than the beam dash so the balls drift gently
+    const dur = 6;
     const particleCount = 3;
     const motionDir = reverse ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '';
     let particles = '';
@@ -2724,8 +2725,8 @@ class PrismEnergyCard extends HTMLElement {
     if (weatherType === 'snowy') {
       for (let i = 0; i < 25; i++) {
         const left = Math.random() * 100;
-        const delay = Math.random() * 6;
-        const duration = 5 + Math.random() * 5;
+        const delay = Math.random() * 12;
+        const duration = 10 + Math.random() * 10;
         const size = 3 + Math.random() * 3;
         html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
@@ -2800,6 +2801,10 @@ class PrismEnergyCard extends HTMLElement {
       if (weatherType === 'sunny' || weatherType === 'clear' || weatherType === 'partlycloudy') {
         html += '<div class="sun-glow"></div>';
       }
+      // Actual sun disc with rays on clear/sunny days (counterpart to the moon)
+      if (weatherType === 'sunny' || weatherType === 'clear') {
+        html += '<div class="sun"><div class="sun-rays"></div></div>';
+      }
     }
 
     // Rain puddle / wet-ground shimmer at the base during rain or storms
@@ -2823,22 +2828,22 @@ class PrismEnergyCard extends HTMLElement {
     if (showClouds) {
       // Determine cloud count based on coverage (if available) or weather type
       let staticCount = weatherType === 'partlycloudy' ? 1 : 3;
-      let movingCount = weatherType === 'partlycloudy' ? 2 : 4;
+      let movingCount = weatherType === 'partlycloudy' ? 2 : 8;
       
       if (cloudCoverage !== null) {
         // Scale clouds based on coverage percentage
         if (cloudCoverage <= 20) {
-          staticCount = 0; movingCount = 1;
+          staticCount = 0; movingCount = 2;
         } else if (cloudCoverage <= 40) {
-          staticCount = 1; movingCount = 1;
+          staticCount = 1; movingCount = 3;
         } else if (cloudCoverage <= 55) {
-          staticCount = 2; movingCount = 2;
+          staticCount = 2; movingCount = 4;
         } else if (cloudCoverage <= 70) {
-          staticCount = 2; movingCount = 3;
+          staticCount = 2; movingCount = 5;
         } else if (cloudCoverage <= 85) {
-          staticCount = 3; movingCount = 3;
+          staticCount = 3; movingCount = 6;
         } else {
-          staticCount = 3; movingCount = 4;
+          staticCount = 3; movingCount = 8;
         }
       }
       
@@ -2849,11 +2854,10 @@ class PrismEnergyCard extends HTMLElement {
       if (staticCount >= 1) html += `<div class="cloud cloud-static cloud-static-1${nightCls}"></div>`;
       if (staticCount >= 2) html += `<div class="cloud cloud-static cloud-static-2${nightCls}"></div>`;
       if (staticCount >= 3) html += `<div class="cloud cloud-static cloud-static-3${nightCls}"></div>`;
-      // Moving clouds
-      if (movingCount >= 1) html += `<div class="cloud cloud-moving cloud-1${nightCls}"></div>`;
-      if (movingCount >= 2) html += `<div class="cloud cloud-moving cloud-2${nightCls}"></div>`;
-      if (movingCount >= 3) html += `<div class="cloud cloud-moving cloud-3${nightCls}"></div>`;
-      if (movingCount >= 4) html += `<div class="cloud cloud-moving cloud-4${nightCls}"></div>`;
+      // Moving clouds (scroll across)
+      for (let c = 1; c <= movingCount && c <= 8; c++) {
+        html += `<div class="cloud cloud-moving cloud-${c}${nightCls}"></div>`;
+      }
     }
 
     html += '</div>';
@@ -3099,6 +3103,44 @@ class PrismEnergyCard extends HTMLElement {
         50% { transform: scale(1.07); opacity: 1; }
       }
 
+      /* Sun disc with rotating rays (daytime counterpart to the moon) */
+      .sun {
+        position: absolute;
+        top: 46px;
+        right: 96px;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 35%, #fff6cf 0%, #ffd23f 45%, #fbb034 100%);
+        box-shadow:
+          0 0 22px rgba(255, 200, 60, 0.75),
+          0 0 46px rgba(255, 180, 50, 0.4);
+        z-index: 0;
+        animation: sun-disc-pulse 6s ease-in-out infinite;
+      }
+      .sun-rays {
+        position: absolute;
+        inset: -16px;
+        border-radius: 50%;
+        background: repeating-conic-gradient(
+          rgba(255, 210, 90, 0.5) 0deg 5deg,
+          transparent 5deg 22deg
+        );
+        -webkit-mask: radial-gradient(farthest-side, transparent 52%, #000 56%);
+        mask: radial-gradient(farthest-side, transparent 52%, #000 56%);
+        animation: sun-spin 45s linear infinite;
+      }
+      @keyframes sun-disc-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+      }
+      @keyframes sun-spin {
+        to { transform: rotate(360deg); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sun-rays { animation: none; }
+      }
+
       /* Sunrise/Sunset Overlays - subtle gradients, below UI */
       .sunrise-overlay {
         position: absolute;
@@ -3200,6 +3242,42 @@ class PrismEnergyCard extends HTMLElement {
       }
       .cloud-4::before { width: 25px; height: 25px; top: -12px; left: 10px; }
       .cloud-4::after { width: 30px; height: 30px; top: -15px; left: 24px; }
+      .cloud-5 {
+        width: 55px; height: 20px;
+        top: 9%; left: -75px;
+        animation-duration: 70s;
+        animation-delay: -10s;
+        opacity: 0.35;
+      }
+      .cloud-5::before { width: 28px; height: 28px; top: -14px; left: 11px; }
+      .cloud-5::after { width: 33px; height: 33px; top: -17px; left: 27px; }
+      .cloud-6 {
+        width: 66px; height: 24px;
+        top: 3%; left: -95px;
+        animation-duration: 90s;
+        animation-delay: -45s;
+        opacity: 0.28;
+      }
+      .cloud-6::before { width: 33px; height: 33px; top: -17px; left: 14px; }
+      .cloud-6::after { width: 40px; height: 40px; top: -21px; left: 33px; }
+      .cloud-7 {
+        width: 42px; height: 16px;
+        top: 14%; left: -55px;
+        animation-duration: 55s;
+        animation-delay: -25s;
+        opacity: 0.34;
+      }
+      .cloud-7::before { width: 21px; height: 21px; top: -10px; left: 8px; }
+      .cloud-7::after { width: 26px; height: 26px; top: -13px; left: 19px; }
+      .cloud-8 {
+        width: 58px; height: 21px;
+        top: 6%; left: -82px;
+        animation-duration: 78s;
+        animation-delay: -60s;
+        opacity: 0.3;
+      }
+      .cloud-8::before { width: 29px; height: 29px; top: -15px; left: 12px; }
+      .cloud-8::after { width: 35px; height: 35px; top: -18px; left: 28px; }
       
       /* Static clouds - gently float in place */
       .cloud-static {
@@ -4253,7 +4331,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.4.1 %c Manual weather override + wind & hail `,
+  `%c PRISM-ENERGY %c v1.4.2 %c Sun disc, more clouds, slower snow & particles `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
