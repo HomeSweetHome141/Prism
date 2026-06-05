@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.5.0
+ * @version 1.5.1
  * @author BangerTech
  */
 
@@ -24989,6 +24989,12 @@ class PrismEnergyCard extends HTMLElement {
         const size = 3 + Math.random() * 3;
         html += `<div class="snow-flake" style="left: ${left}%; animation-delay: ${delay}s; animation-duration: ${duration}s; width: ${size}px; height: ${size}px;"></div>`;
       }
+      // Light snow accumulation around the base of the house
+      html += `
+        <div class="snow-buildup snow-buildup-1"></div>
+        <div class="snow-buildup snow-buildup-2"></div>
+        <div class="snow-buildup snow-buildup-3"></div>
+      `;
     }
 
     // Hail effect (fast bouncing ice pellets)
@@ -25033,15 +25039,16 @@ class PrismEnergyCard extends HTMLElement {
 
     // Night effects: stars and moon
     if (isNight) {
-      // Stars - only in top 15-20% of the card
+      // Stars - only in top area, with stronger twinkle
       html += '<div class="stars-container">';
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 34; i++) {
         const left = Math.random() * 100;
-        const top = Math.random() * 18; // Only top 18%
+        const top = Math.random() * 24; // Keep stars mostly near the top
         const size = 1 + Math.random() * 1.5;
         const delay = Math.random() * 3;
-        const brightness = 0.2 + Math.random() * 0.3; // More transparent (0.2-0.5)
-        html += `<div class="star" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation-delay: ${delay}s; opacity: ${brightness};"></div>`;
+        const duration = 2 + Math.random() * 4;
+        const brightness = 0.15 + Math.random() * 0.7;
+        html += `<div class="star" style="left: ${left}%; top: ${top}%; width: ${size}px; height: ${size}px; animation-delay: ${delay}s; animation-duration: ${duration}s; opacity: ${brightness};"></div>`;
       }
       html += '</div>';
 
@@ -25078,18 +25085,43 @@ class PrismEnergyCard extends HTMLElement {
       html += '<div class="sunset-overlay"></div>';
     }
 
-    // Clouds based on cloud coverage or weather type (now allowed at night, dimmed)
+    // Clouds based on weather type / coverage.
+    // - Cloudy: lots of clouds
+    // - Partly cloudy: moderate clouds
+    // - Rain/Storm: clouds always present
+    // - Night: consistent cloud amount in all scenarios
     const cloudCoverage = weatherData.cloudCoverage;
-    const showClouds = (weatherType === 'cloudy' || weatherType === 'partlycloudy' ||
-                        (cloudCoverage !== null && cloudCoverage > 0)) &&
-                       weatherType !== 'foggy';
+    const isPrecip = weatherType === 'rainy' || weatherType === 'stormy' || weatherType === 'snowy' || weatherType === 'hail';
+    const showClouds = isNight || weatherType === 'cloudy' || weatherType === 'partlycloudy' || isPrecip ||
+                       (cloudCoverage !== null && cloudCoverage > 0);
     
     if (showClouds) {
-      // Determine cloud count based on coverage (if available) or weather type
-      let staticCount = weatherType === 'partlycloudy' ? 1 : 3;
-      let movingCount = weatherType === 'partlycloudy' ? 2 : 8;
+      // Determine cloud count based on weather type
+      let staticCount = 3;
+      let movingCount = 8;
+
+      if (weatherType === 'partlycloudy') {
+        staticCount = 2;
+        movingCount = 5;
+      } else if (weatherType === 'rainy') {
+        staticCount = 3;
+        movingCount = 7;
+      } else if (weatherType === 'stormy') {
+        staticCount = 3;
+        movingCount = 8;
+      } else if (weatherType === 'snowy') {
+        staticCount = 2;
+        movingCount = 6;
+      } else if (weatherType === 'hail') {
+        staticCount = 2;
+        movingCount = 6;
+      }
       
-      if (cloudCoverage !== null) {
+      // Night mode: same cloud amount across all scenarios
+      if (isNight) {
+        staticCount = 3;
+        movingCount = 8;
+      } else if (cloudCoverage !== null) {
         // Scale clouds based on coverage percentage
         if (cloudCoverage <= 20) {
           staticCount = 0; movingCount = 2;
@@ -25217,6 +25249,34 @@ class PrismEnergyCard extends HTMLElement {
         }
       }
 
+      /* Snow accumulation around the bottom area/house base */
+      .snow-buildup {
+        position: absolute;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 1;
+        background: linear-gradient(to top, rgba(245, 250, 255, 0.82), rgba(230, 240, 250, 0.45), transparent 92%);
+        filter: blur(0.6px);
+      }
+      .snow-buildup-1 {
+        left: 8%;
+        width: 34%;
+        height: 14%;
+        border-radius: 48% 52% 0 0;
+      }
+      .snow-buildup-2 {
+        left: 30%;
+        width: 42%;
+        height: 12%;
+        border-radius: 56% 44% 0 0;
+      }
+      .snow-buildup-3 {
+        left: 64%;
+        width: 26%;
+        height: 10%;
+        border-radius: 52% 48% 0 0;
+      }
+
       /* Hail Animation - fast, hard ice pellets */
       .hail-stone {
         position: absolute;
@@ -25307,11 +25367,12 @@ class PrismEnergyCard extends HTMLElement {
         background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8), rgba(170, 204, 255, 0.5));
         border-radius: 50%;
         animation: star-twinkle 4s ease-in-out infinite;
-        box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
       }
       @keyframes star-twinkle {
-        0%, 100% { opacity: 0.2; transform: scale(0.9); }
-        50% { opacity: 0.5; transform: scale(1.1); }
+        0%, 100% { opacity: 0.18; transform: scale(0.85); }
+        35% { opacity: 0.95; transform: scale(1.25); }
+        70% { opacity: 0.35; transform: scale(0.95); }
       }
 
       /* Moon - subtle and transparent, positioned below autarky badge */
@@ -26612,7 +26673,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.0 %c Glowy sun, SOC battery/EV, 10 generic overlays `,
+  `%c PRISM-ENERGY %c v1.5.1 %c Weather polish: clouds, snow buildup, stars `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
