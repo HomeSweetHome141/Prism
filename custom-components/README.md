@@ -825,7 +825,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 
 <img width="400" alt="prism-energy" src="images/prism-energy.jpg" />
 
-**Current version:** `1.4.2`
+**Current version:** `1.5.0`
 
 **Features:**
 - ✅ **Animated Energy Flows**: Visualizes energy flow between all components
@@ -858,6 +858,7 @@ An energy flow card with glassmorphism design for visualizing solar generation, 
 | **1.4.0** | Visual overhaul: flowing beam particles, color themes, glassmorphism + pill entry animation, SOC arc rings, color-graded values, daytime sky tint, partly-cloudy & night clouds, rain puddle, lightning flash, animated header weather icon |
 | **1.4.1** | Manual Weather override (force day/night effect) plus new wind and hail effects |
 | **1.4.2** | Sun disc with rays on clear days, more scrolling clouds for cloudy, slower snowfall, slower beam particles |
+| **1.5.0** | Softer glowy sun with light rays; battery icon + % reflect SOC with red→green gradient; EV circle shows linked battery % with gradient; power overlays replaced by 10 generic entity-driven overlays (Overlay 1–10) |
 
 ---
 
