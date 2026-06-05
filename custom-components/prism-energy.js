@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.5.1
+ * @version 1.5.2
  * @author BangerTech
  */
 
@@ -2466,6 +2466,28 @@ class PrismEnergyCard extends HTMLElement {
     return isNight ? 'Night' : 'Day';
   }
 
+  // Compute daytime sun position (0..1 = left..right) and phase (dawn/day/dusk/night)
+  _getSunVisualState(sunState, isNight) {
+    const now = new Date();
+    const hour = now.getHours() + now.getMinutes() / 60;
+    const az = Number(sunState?.attributes?.azimuth);
+    let progress = 0.5;
+
+    // Prefer solar azimuth when available: east (~90) -> west (~270)
+    if (!Number.isNaN(az)) {
+      progress = Math.max(0, Math.min(1, (az - 90) / 180));
+    } else {
+      // Fallback by local daytime clock
+      progress = Math.max(0, Math.min(1, (hour - 6) / 12));
+    }
+
+    const phase = isNight
+      ? 'night'
+      : (progress < 0.2 ? 'dawn' : (progress > 0.8 ? 'dusk' : 'day'));
+
+    return { progress, phase };
+  }
+
   // Translate UI labels based on HA language (card display only, not editor)
   _t(key) {
     const lang = this._hass?.language || this._hass?.locale?.language || 'en';
@@ -2509,6 +2531,8 @@ class PrismEnergyCard extends HTMLElement {
     const manualMode = this._config.manual_weather_mode || 'auto';
     if (manualMode === 'day' || manualMode === 'night') {
       const isNight = manualMode === 'night';
+      const sunState = this._hass.states['sun.sun'];
+      const sunVisual = this._getSunVisualState(sunState, isNight);
       const weatherType = isNight
         ? (this._config.manual_weather_night || 'clear')
         : (this._config.manual_weather_day || 'sunny');
@@ -2523,6 +2547,8 @@ class PrismEnergyCard extends HTMLElement {
         isNight,
         isSunrise: false,
         isSunset: false,
+        sunProgress: sunVisual.progress,
+        sunPhase: sunVisual.phase,
         condition: weatherType,
         cloudCoverage
       };
@@ -2540,6 +2566,7 @@ class PrismEnergyCard extends HTMLElement {
     // Get sun state for day/night
     const sunState = this._hass.states['sun.sun'];
     const isNight = sunState?.state === 'below_horizon';
+    const sunVisual = this._getSunVisualState(sunState, isNight);
     
     // Get sun elevation for sunrise/sunset effects
     const sunElevation = sunState?.attributes?.elevation || 0;
@@ -2583,6 +2610,8 @@ class PrismEnergyCard extends HTMLElement {
       isNight,
       isSunrise,
       isSunset,
+      sunProgress: sunVisual.progress,
+      sunPhase: sunVisual.phase,
       condition: weatherCondition,
       cloudCoverage
     };
@@ -2594,6 +2623,9 @@ class PrismEnergyCard extends HTMLElement {
 
     let html = '<div class="weather-container">';
     const { weatherType, isNight, isSunrise, isSunset } = weatherData;
+    const sunProgress = Math.max(0, Math.min(1, Number(weatherData.sunProgress) || 0.5));
+    const sunPhase = weatherData.sunPhase || (isNight ? 'night' : 'day');
+    const sunX = `${10 + sunProgress * 80}%`;
 
     // Rain effect (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
@@ -2691,11 +2723,11 @@ class PrismEnergyCard extends HTMLElement {
     } else {
       // Day effects: sun glow - more subtle (also peeks through on partly cloudy)
       if (weatherType === 'sunny' || weatherType === 'clear' || weatherType === 'partlycloudy') {
-        html += '<div class="sun-glow"></div>';
+        html += `<div class="sun-glow sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div>`;
       }
       // Soft glowing sun + downward light rays on clear/sunny days
       if (weatherType === 'sunny' || weatherType === 'clear') {
-        html += '<div class="sun-beams"></div><div class="sun"></div>';
+        html += `<div class="sun-beams sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div><div class="sun sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div>`;
       }
     }
 
@@ -3030,7 +3062,8 @@ class PrismEnergyCard extends HTMLElement {
       .sun-glow {
         position: absolute;
         top: 40px;
-        right: 90px;
+        left: var(--sun-x, 50%);
+        transform: translateX(-50%);
         width: 190px;
         height: 190px;
         background: radial-gradient(
@@ -3053,7 +3086,8 @@ class PrismEnergyCard extends HTMLElement {
       .sun {
         position: absolute;
         top: 42px;
-        right: 92px;
+        left: var(--sun-x, 50%);
+        transform: translateX(-50%);
         width: 50px;
         height: 50px;
         border-radius: 50%;
@@ -3074,7 +3108,8 @@ class PrismEnergyCard extends HTMLElement {
       .sun-beams {
         position: absolute;
         top: 20px;
-        right: 30px;
+        left: var(--sun-x, 50%);
+        transform: translateX(-50%);
         width: 280px;
         height: 280px;
         background: conic-gradient(from 0deg at 88% 6%,
@@ -3103,6 +3138,73 @@ class PrismEnergyCard extends HTMLElement {
       }
       @media (prefers-reduced-motion: reduce) {
         .sun-beams { animation: none; }
+      }
+
+      /* Sun color by daytime phase */
+      .sun-phase-dawn.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 232, 200, 0.96) 0%,
+          rgba(255, 176, 120, 0.72) 44%,
+          rgba(255, 138, 94, 0.30) 70%,
+          transparent 100%);
+        box-shadow:
+          0 0 26px rgba(255, 168, 120, 0.62),
+          0 0 58px rgba(255, 134, 96, 0.36),
+          0 0 96px rgba(255, 112, 88, 0.20);
+      }
+      .sun-phase-dawn.sun-glow {
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 178, 120, 0.34) 0%,
+          rgba(255, 146, 110, 0.20) 30%,
+          rgba(255, 120, 100, 0.10) 52%,
+          transparent 74%
+        );
+      }
+      .sun-phase-dawn.sun-beams {
+        background: conic-gradient(from 0deg at 88% 6%,
+          transparent 96deg,
+          rgba(255, 186, 132, 0.15) 106deg,
+          transparent 118deg,
+          rgba(255, 156, 116, 0.12) 134deg,
+          transparent 146deg,
+          rgba(255, 186, 132, 0.15) 162deg,
+          transparent 176deg,
+          rgba(255, 150, 110, 0.11) 192deg,
+          transparent 208deg);
+      }
+
+      .sun-phase-dusk.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 226, 188, 0.96) 0%,
+          rgba(255, 162, 112, 0.70) 42%,
+          rgba(244, 122, 106, 0.30) 70%,
+          transparent 100%);
+        box-shadow:
+          0 0 24px rgba(255, 170, 118, 0.60),
+          0 0 56px rgba(235, 126, 112, 0.35),
+          0 0 94px rgba(210, 106, 112, 0.20);
+      }
+      .sun-phase-dusk.sun-glow {
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 170, 112, 0.30) 0%,
+          rgba(238, 130, 110, 0.18) 30%,
+          rgba(200, 110, 122, 0.10) 52%,
+          transparent 74%
+        );
+      }
+      .sun-phase-dusk.sun-beams {
+        background: conic-gradient(from 0deg at 88% 6%,
+          transparent 96deg,
+          rgba(255, 180, 126, 0.13) 106deg,
+          transparent 118deg,
+          rgba(232, 136, 112, 0.11) 134deg,
+          transparent 146deg,
+          rgba(255, 180, 126, 0.13) 162deg,
+          transparent 176deg,
+          rgba(208, 120, 126, 0.10) 192deg,
+          transparent 208deg);
       }
 
       /* Sunrise/Sunset Overlays - subtle gradients, below UI */
@@ -4299,7 +4401,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.1 %c Weather polish: clouds, snow buildup, stars `,
+  `%c PRISM-ENERGY %c v1.5.2 %c Dynamic sun path + dawn/day/dusk colours `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
