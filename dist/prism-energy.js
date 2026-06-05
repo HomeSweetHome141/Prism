@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
  * Designed for OpenEMS/Fenecon integration
@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.5.2
+ * @version 1.5.3
  * @author BangerTech
  */
 
@@ -203,6 +203,10 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: false,
       weather_entity: "",
       cloud_coverage_entity: "",
+      manual_weather_mode: "auto",
+      manual_weather_day: "sunny",
+      manual_weather_night: "clear",
+      manual_weather_day_phase: "auto",
       // Solar modules (optional)
       solar_module1: "",
       solar_module1_name: "",
@@ -374,7 +378,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "grid_power",
-          label: "Grid Power â€“ combined (optional if import/export set; +import, âˆ’export)",
+          label: "Grid Power – combined (optional if import/export set; +import, −export)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -395,7 +399,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "battery_power",
-          label: "Battery Power â€“ combined (optional if charge/discharge set; +discharge, âˆ’charge)",
+          label: "Battery Power – combined (optional if charge/discharge set; +discharge, −charge)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -552,6 +556,16 @@ class PrismEnergyCard extends HTMLElement {
                 { value: "hail", label: "Hail" },
                 { value: "foggy", label: "Fog" },
                 { value: "windy", label: "Windy" }
+              ] } }
+            },
+            {
+              name: "manual_weather_day_phase",
+              label: "Day sun phase (for sun color/position preview)",
+              selector: { select: { mode: "dropdown", options: [
+                { value: "auto", label: "Auto (from sun position/time)" },
+                { value: "dawn", label: "Dawn" },
+                { value: "day", label: "Day" },
+                { value: "dusk", label: "Dusk" }
               ] } }
             },
             {
@@ -848,7 +862,7 @@ class PrismEnergyCard extends HTMLElement {
                 },
                 {
                   name: "custom_pill_1_label",
-                  label: "Label (optional, e.g. 'AuÃŸen')",
+                  label: "Label (optional, e.g. 'Außen')",
                   selector: { text: {} }
                 },
                 {
@@ -1300,6 +1314,7 @@ class PrismEnergyCard extends HTMLElement {
       manual_weather_mode: config.manual_weather_mode || "auto",
       manual_weather_day: config.manual_weather_day || "sunny",
       manual_weather_night: config.manual_weather_night || "clear",
+      manual_weather_day_phase: config.manual_weather_day_phase || "auto",
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -1696,7 +1711,7 @@ class PrismEnergyCard extends HTMLElement {
   _getCustomPillValue(entityId) {
     if (!entityId || !this._hass) return { value: '', unit: '' };
     const stateObj = this._hass.states[entityId];
-    if (!stateObj) return { value: 'â€”', unit: '' };
+    if (!stateObj) return { value: '—', unit: '' };
     return {
       value: stateObj.state,
       unit: stateObj.attributes?.unit_of_measurement || ''
@@ -1827,7 +1842,7 @@ class PrismEnergyCard extends HTMLElement {
     if (!entityId || !this._hass) return { text: '', visible: false };
     const stateObj = this._hass.states[entityId];
     if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') {
-      return { text: '—', visible: false };
+      return { text: '�', visible: false };
     }
     const unit = stateObj.attributes?.unit_of_measurement || '';
     return { text: `${stateObj.state}${unit ? ' ' + unit : ''}`, visible: true };
@@ -1850,9 +1865,9 @@ class PrismEnergyCard extends HTMLElement {
   }
 
   _getEntityDisplayState(entityId) {
-    if (!entityId || !this._hass) return 'â€”';
+    if (!entityId || !this._hass) return '—';
     const stateObj = this._hass.states[entityId];
-    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return 'â€”';
+    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return '—';
     return stateObj.state;
   }
 
@@ -2425,8 +2440,8 @@ class PrismEnergyCard extends HTMLElement {
     const labels = isGerman ? {
       'sunny': 'Sonnig',
       'clear': 'Klar',
-      'cloudy': 'BewÃ¶lkt',
-      'partlycloudy': 'Teilweise bewÃ¶lkt',
+      'cloudy': 'Bewölkt',
+      'partlycloudy': 'Teilweise bewölkt',
       'rainy': 'Regen',
       'snowy': 'Schnee',
       'hail': 'Hagel',
@@ -2533,9 +2548,15 @@ class PrismEnergyCard extends HTMLElement {
       const isNight = manualMode === 'night';
       const sunState = this._hass.states['sun.sun'];
       const sunVisual = this._getSunVisualState(sunState, isNight);
+      const manualPhase = this._config.manual_weather_day_phase || 'auto';
       const weatherType = isNight
         ? (this._config.manual_weather_night || 'clear')
         : (this._config.manual_weather_day || 'sunny');
+      const phase = isNight ? 'night' : (manualPhase === 'auto' ? sunVisual.phase : manualPhase);
+      let progress = sunVisual.progress;
+      if (!isNight && manualPhase !== 'auto') {
+        progress = manualPhase === 'dawn' ? 0.1 : manualPhase === 'day' ? 0.5 : 0.9;
+      }
       let cloudCoverage = null;
       if (this._config.cloud_coverage_entity) {
         const cloudState = this._hass.states[this._config.cloud_coverage_entity];
@@ -2547,8 +2568,8 @@ class PrismEnergyCard extends HTMLElement {
         isNight,
         isSunrise: false,
         isSunset: false,
-        sunProgress: sunVisual.progress,
-        sunPhase: sunVisual.phase,
+        sunProgress: progress,
+        sunPhase: phase,
         condition: weatherType,
         cloudCoverage
       };
@@ -3112,16 +3133,16 @@ class PrismEnergyCard extends HTMLElement {
         transform: translateX(-50%);
         width: 280px;
         height: 280px;
-        background: conic-gradient(from 0deg at 88% 6%,
-          transparent 96deg,
-          rgba(255, 226, 150, 0.14) 106deg,
-          transparent 118deg,
-          rgba(255, 222, 140, 0.10) 134deg,
-          transparent 146deg,
-          rgba(255, 226, 150, 0.14) 162deg,
+        background: conic-gradient(from 180deg at 50% 12%,
+          transparent 126deg,
+          rgba(255, 226, 150, 0.14) 138deg,
+          transparent 148deg,
+          rgba(255, 222, 140, 0.10) 164deg,
           transparent 176deg,
-          rgba(255, 220, 138, 0.09) 192deg,
-          transparent 208deg);
+          rgba(255, 226, 150, 0.14) 192deg,
+          transparent 204deg,
+          rgba(255, 220, 138, 0.09) 220deg,
+          transparent 234deg);
         filter: blur(7px);
         pointer-events: none;
         z-index: 0;
@@ -3162,16 +3183,16 @@ class PrismEnergyCard extends HTMLElement {
         );
       }
       .sun-phase-dawn.sun-beams {
-        background: conic-gradient(from 0deg at 88% 6%,
-          transparent 96deg,
-          rgba(255, 186, 132, 0.15) 106deg,
-          transparent 118deg,
-          rgba(255, 156, 116, 0.12) 134deg,
-          transparent 146deg,
-          rgba(255, 186, 132, 0.15) 162deg,
+        background: conic-gradient(from 180deg at 50% 12%,
+          transparent 126deg,
+          rgba(255, 186, 132, 0.15) 138deg,
+          transparent 148deg,
+          rgba(255, 156, 116, 0.12) 164deg,
           transparent 176deg,
-          rgba(255, 150, 110, 0.11) 192deg,
-          transparent 208deg);
+          rgba(255, 186, 132, 0.15) 192deg,
+          transparent 204deg,
+          rgba(255, 150, 110, 0.11) 220deg,
+          transparent 234deg);
       }
 
       .sun-phase-dusk.sun {
@@ -3195,16 +3216,16 @@ class PrismEnergyCard extends HTMLElement {
         );
       }
       .sun-phase-dusk.sun-beams {
-        background: conic-gradient(from 0deg at 88% 6%,
-          transparent 96deg,
-          rgba(255, 180, 126, 0.13) 106deg,
-          transparent 118deg,
-          rgba(232, 136, 112, 0.11) 134deg,
-          transparent 146deg,
-          rgba(255, 180, 126, 0.13) 162deg,
+        background: conic-gradient(from 180deg at 50% 12%,
+          transparent 126deg,
+          rgba(255, 180, 126, 0.13) 138deg,
+          transparent 148deg,
+          rgba(232, 136, 112, 0.11) 164deg,
           transparent 176deg,
-          rgba(208, 120, 126, 0.10) 192deg,
-          transparent 208deg);
+          rgba(255, 180, 126, 0.13) 192deg,
+          transparent 204deg,
+          rgba(208, 120, 126, 0.10) 220deg,
+          transparent 234deg);
       }
 
       /* Sunrise/Sunset Overlays - subtle gradients, below UI */
@@ -4079,7 +4100,7 @@ class PrismEnergyCard extends HTMLElement {
         }
         .color-inactive { color: rgba(255, 255, 255, 0.35); }
 
-        /* Custom pill breathe — uses --pill-r/g/b set on .pill-icon */
+        /* Custom pill breathe � uses --pill-r/g/b set on .pill-icon */
         @keyframes custom-pill-glow-breathe {
           0%, 100% {
             box-shadow:
@@ -4401,7 +4422,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.2 %c Dynamic sun path + dawn/day/dusk colours `,
+  `%c PRISM-ENERGY %c v1.5.3 %c Manual sun phases + house-facing rays `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
