@@ -22383,7 +22383,7 @@ window.customCards.push({
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.5.3
+ * @version 1.5.4
  * @author BangerTech
  */
 
@@ -22752,7 +22752,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "grid_power",
-          label: "Grid Power – combined (optional if import/export set; +import, −export)",
+          label: "Grid Power � combined (optional if import/export set; +import, -export)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -22773,7 +22773,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "battery_power",
-          label: "Battery Power – combined (optional if charge/discharge set; +discharge, −charge)",
+          label: "Battery Power � combined (optional if charge/discharge set; +discharge, -charge)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -22937,9 +22937,14 @@ class PrismEnergyCard extends HTMLElement {
               label: "Day sun phase (for sun color/position preview)",
               selector: { select: { mode: "dropdown", options: [
                 { value: "auto", label: "Auto (from sun position/time)" },
-                { value: "dawn", label: "Dawn" },
-                { value: "day", label: "Day" },
-                { value: "dusk", label: "Dusk" }
+                { value: "sunrise_1", label: "Sunrise 1 (pale blue + soft pink)" },
+                { value: "sunrise_2", label: "Sunrise 2 (peach + lavender)" },
+                { value: "morning", label: "Morning (light orange/yellow)" },
+                { value: "late_morning", label: "Late Morning (warm bright)" },
+                { value: "noon", label: "Noon (bright yellow)" },
+                { value: "afternoon", label: "Afternoon (yellow-orange)" },
+                { value: "sunset_1", label: "Sunset 1 (deep orange + gold)" },
+                { value: "sunset_2", label: "Sunset 2 (red + purple + dusty blue)" }
               ] } }
             },
             {
@@ -23236,7 +23241,7 @@ class PrismEnergyCard extends HTMLElement {
                 },
                 {
                   name: "custom_pill_1_label",
-                  label: "Label (optional, e.g. 'Außen')",
+                  label: "Label (optional, e.g. 'Au�en')",
                   selector: { text: {} }
                 },
                 {
@@ -24085,7 +24090,7 @@ class PrismEnergyCard extends HTMLElement {
   _getCustomPillValue(entityId) {
     if (!entityId || !this._hass) return { value: '', unit: '' };
     const stateObj = this._hass.states[entityId];
-    if (!stateObj) return { value: '—', unit: '' };
+    if (!stateObj) return { value: '�', unit: '' };
     return {
       value: stateObj.state,
       unit: stateObj.attributes?.unit_of_measurement || ''
@@ -24216,7 +24221,7 @@ class PrismEnergyCard extends HTMLElement {
     if (!entityId || !this._hass) return { text: '', visible: false };
     const stateObj = this._hass.states[entityId];
     if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') {
-      return { text: '�', visible: false };
+      return { text: '?', visible: false };
     }
     const unit = stateObj.attributes?.unit_of_measurement || '';
     return { text: `${stateObj.state}${unit ? ' ' + unit : ''}`, visible: true };
@@ -24239,9 +24244,9 @@ class PrismEnergyCard extends HTMLElement {
   }
 
   _getEntityDisplayState(entityId) {
-    if (!entityId || !this._hass) return '—';
+    if (!entityId || !this._hass) return '�';
     const stateObj = this._hass.states[entityId];
-    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return '—';
+    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return '�';
     return stateObj.state;
   }
 
@@ -24814,8 +24819,8 @@ class PrismEnergyCard extends HTMLElement {
     const labels = isGerman ? {
       'sunny': 'Sonnig',
       'clear': 'Klar',
-      'cloudy': 'Bewölkt',
-      'partlycloudy': 'Teilweise bewölkt',
+      'cloudy': 'Bew�lkt',
+      'partlycloudy': 'Teilweise bew�lkt',
       'rainy': 'Regen',
       'snowy': 'Schnee',
       'hail': 'Hagel',
@@ -24855,7 +24860,7 @@ class PrismEnergyCard extends HTMLElement {
     return isNight ? 'Night' : 'Day';
   }
 
-  // Compute daytime sun position (0..1 = left..right) and phase (dawn/day/dusk/night)
+  // Compute daytime sun position (0..1 = left..right) and a detailed 8-phase sun palette
   _getSunVisualState(sunState, isNight) {
     const now = new Date();
     const hour = now.getHours() + now.getMinutes() / 60;
@@ -24870,9 +24875,23 @@ class PrismEnergyCard extends HTMLElement {
       progress = Math.max(0, Math.min(1, (hour - 6) / 12));
     }
 
-    const phase = isNight
-      ? 'night'
-      : (progress < 0.2 ? 'dawn' : (progress > 0.8 ? 'dusk' : 'day'));
+    let phase = 'noon';
+    if (isNight) {
+      phase = 'night';
+    } else {
+      const phases = [
+        'sunrise_1',   // pre-sunrise glow
+        'sunrise_2',   // soft pink/peach
+        'morning',     // warmer morning yellow
+        'late_morning',
+        'noon',        // brightest yellow
+        'afternoon',   // starting to warm
+        'sunset_1',    // orange/gold
+        'sunset_2'     // red/purple/dusty blue
+      ];
+      const idx = Math.max(0, Math.min(7, Math.floor(progress * 8)));
+      phase = phases[idx];
+    }
 
     return { progress, phase };
   }
@@ -24929,7 +24948,17 @@ class PrismEnergyCard extends HTMLElement {
       const phase = isNight ? 'night' : (manualPhase === 'auto' ? sunVisual.phase : manualPhase);
       let progress = sunVisual.progress;
       if (!isNight && manualPhase !== 'auto') {
-        progress = manualPhase === 'dawn' ? 0.1 : manualPhase === 'day' ? 0.5 : 0.9;
+        const phaseProgress = {
+          sunrise_1: 0.06,
+          sunrise_2: 0.18,
+          morning: 0.31,
+          late_morning: 0.44,
+          noon: 0.56,
+          afternoon: 0.69,
+          sunset_1: 0.82,
+          sunset_2: 0.94
+        };
+        progress = phaseProgress[manualPhase] ?? 0.56;
       }
       let cloudCoverage = null;
       if (this._config.cloud_coverage_entity) {
@@ -25021,6 +25050,8 @@ class PrismEnergyCard extends HTMLElement {
     const sunProgress = Math.max(0, Math.min(1, Number(weatherData.sunProgress) || 0.5));
     const sunPhase = weatherData.sunPhase || (isNight ? 'night' : 'day');
     const sunX = `${10 + sunProgress * 80}%`;
+    // Rotate rays so they always point toward the house center (~55% x)
+    const beamAngle = (0.5 - sunProgress) * 34; // left sun => tilt right, right sun => tilt left
 
     // Rain effect (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
@@ -25122,7 +25153,7 @@ class PrismEnergyCard extends HTMLElement {
       }
       // Soft glowing sun + downward light rays on clear/sunny days
       if (weatherType === 'sunny' || weatherType === 'clear') {
-        html += `<div class="sun-beams sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div><div class="sun sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div>`;
+        html += `<div class="sun-beams sun-phase-${sunPhase}" style="--sun-x: ${sunX}; --beam-angle: ${beamAngle}deg;"></div><div class="sun sun-phase-${sunPhase}" style="--sun-x: ${sunX};"></div>`;
       }
     }
 
@@ -25504,7 +25535,8 @@ class PrismEnergyCard extends HTMLElement {
         position: absolute;
         top: 20px;
         left: var(--sun-x, 50%);
-        transform: translateX(-50%);
+        transform: translateX(-50%) rotate(var(--beam-angle, 0deg));
+        transform-origin: 50% 12%;
         width: 280px;
         height: 280px;
         background: conic-gradient(from 180deg at 50% 12%,
@@ -25536,69 +25568,155 @@ class PrismEnergyCard extends HTMLElement {
       }
 
       /* Sun color by daytime phase */
-      .sun-phase-dawn.sun {
+      .sun-phase-sunrise_1.sun {
         background: radial-gradient(circle at 50% 50%,
-          rgba(255, 232, 200, 0.96) 0%,
-          rgba(255, 176, 120, 0.72) 44%,
-          rgba(255, 138, 94, 0.30) 70%,
+          rgba(232, 244, 255, 0.96) 0%,
+          rgba(255, 198, 188, 0.70) 42%,
+          rgba(255, 170, 150, 0.30) 70%,
           transparent 100%);
         box-shadow:
-          0 0 26px rgba(255, 168, 120, 0.62),
-          0 0 58px rgba(255, 134, 96, 0.36),
-          0 0 96px rgba(255, 112, 88, 0.20);
+          0 0 26px rgba(196, 216, 255, 0.55),
+          0 0 58px rgba(255, 176, 186, 0.34),
+          0 0 96px rgba(240, 168, 206, 0.20);
       }
-      .sun-phase-dawn.sun-glow {
+      .sun-phase-sunrise_1.sun-glow {
         background: radial-gradient(
           circle at center,
-          rgba(255, 178, 120, 0.34) 0%,
-          rgba(255, 146, 110, 0.20) 30%,
-          rgba(255, 120, 100, 0.10) 52%,
+          rgba(186, 216, 255, 0.30) 0%,
+          rgba(246, 190, 196, 0.22) 30%,
+          rgba(230, 184, 220, 0.12) 52%,
           transparent 74%
         );
       }
-      .sun-phase-dawn.sun-beams {
+      .sun-phase-sunrise_1.sun-beams {
         background: conic-gradient(from 180deg at 50% 12%,
           transparent 126deg,
-          rgba(255, 186, 132, 0.15) 138deg,
+          rgba(210, 228, 255, 0.15) 138deg,
           transparent 148deg,
-          rgba(255, 156, 116, 0.12) 164deg,
+          rgba(255, 188, 196, 0.12) 164deg,
           transparent 176deg,
-          rgba(255, 186, 132, 0.15) 192deg,
+          rgba(238, 192, 224, 0.15) 192deg,
           transparent 204deg,
-          rgba(255, 150, 110, 0.11) 220deg,
+          rgba(202, 218, 248, 0.11) 220deg,
           transparent 234deg);
       }
 
-      .sun-phase-dusk.sun {
+      .sun-phase-sunrise_2.sun {
         background: radial-gradient(circle at 50% 50%,
-          rgba(255, 226, 188, 0.96) 0%,
-          rgba(255, 162, 112, 0.70) 42%,
-          rgba(244, 122, 106, 0.30) 70%,
+          rgba(255, 236, 206, 0.96) 0%,
+          rgba(255, 190, 142, 0.70) 42%,
+          rgba(230, 180, 222, 0.30) 70%,
           transparent 100%);
         box-shadow:
-          0 0 24px rgba(255, 170, 118, 0.60),
-          0 0 56px rgba(235, 126, 112, 0.35),
-          0 0 94px rgba(210, 106, 112, 0.20);
+          0 0 24px rgba(255, 192, 144, 0.60),
+          0 0 56px rgba(238, 170, 220, 0.35),
+          0 0 94px rgba(212, 172, 232, 0.20);
       }
-      .sun-phase-dusk.sun-glow {
+      .sun-phase-sunrise_2.sun-glow {
         background: radial-gradient(
           circle at center,
-          rgba(255, 170, 112, 0.30) 0%,
-          rgba(238, 130, 110, 0.18) 30%,
-          rgba(200, 110, 122, 0.10) 52%,
+          rgba(255, 196, 146, 0.30) 0%,
+          rgba(248, 176, 146, 0.18) 30%,
+          rgba(214, 168, 222, 0.10) 52%,
           transparent 74%
         );
       }
-      .sun-phase-dusk.sun-beams {
+      .sun-phase-sunrise_2.sun-beams {
         background: conic-gradient(from 180deg at 50% 12%,
           transparent 126deg,
-          rgba(255, 180, 126, 0.13) 138deg,
+          rgba(255, 202, 152, 0.13) 138deg,
           transparent 148deg,
-          rgba(232, 136, 112, 0.11) 164deg,
+          rgba(248, 184, 152, 0.11) 164deg,
           transparent 176deg,
-          rgba(255, 180, 126, 0.13) 192deg,
+          rgba(232, 176, 222, 0.13) 192deg,
           transparent 204deg,
-          rgba(208, 120, 126, 0.10) 220deg,
+          rgba(216, 178, 232, 0.10) 220deg,
+          transparent 234deg);
+      }
+
+      .sun-phase-morning.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 244, 208, 0.96) 0%,
+          rgba(255, 210, 138, 0.72) 42%,
+          rgba(255, 182, 104, 0.30) 70%,
+          transparent 100%);
+      }
+      .sun-phase-late_morning.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 248, 214, 0.96) 0%,
+          rgba(255, 220, 142, 0.72) 42%,
+          rgba(255, 194, 106, 0.30) 70%,
+          transparent 100%);
+      }
+      .sun-phase-noon.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 250, 220, 0.98) 0%,
+          rgba(255, 226, 136, 0.74) 42%,
+          rgba(255, 198, 94, 0.30) 70%,
+          transparent 100%);
+      }
+      .sun-phase-afternoon.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 244, 204, 0.96) 0%,
+          rgba(255, 208, 128, 0.72) 42%,
+          rgba(255, 170, 98, 0.30) 70%,
+          transparent 100%);
+      }
+
+      .sun-phase-sunset_1.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 228, 184, 0.96) 0%,
+          rgba(255, 168, 106, 0.70) 42%,
+          rgba(234, 126, 88, 0.30) 70%,
+          transparent 100%);
+      }
+      .sun-phase-sunset_1.sun-glow {
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 184, 118, 0.30) 0%,
+          rgba(238, 146, 108, 0.18) 30%,
+          rgba(224, 126, 96, 0.10) 52%,
+          transparent 74%
+        );
+      }
+      .sun-phase-sunset_1.sun-beams {
+        background: conic-gradient(from 180deg at 50% 12%,
+          transparent 126deg,
+          rgba(255, 186, 126, 0.13) 138deg,
+          transparent 148deg,
+          rgba(236, 142, 112, 0.11) 164deg,
+          transparent 176deg,
+          rgba(255, 196, 132, 0.13) 192deg,
+          transparent 204deg,
+          rgba(218, 132, 118, 0.10) 220deg,
+          transparent 234deg);
+      }
+
+      .sun-phase-sunset_2.sun {
+        background: radial-gradient(circle at 50% 50%,
+          rgba(255, 214, 170, 0.94) 0%,
+          rgba(228, 138, 98, 0.68) 40%,
+          rgba(174, 112, 154, 0.32) 70%,
+          transparent 100%);
+      }
+      .sun-phase-sunset_2.sun-glow {
+        background: radial-gradient(
+          circle at center,
+          rgba(230, 152, 110, 0.28) 0%,
+          rgba(190, 120, 150, 0.18) 30%,
+          rgba(136, 146, 188, 0.12) 52%,
+          transparent 234deg);
+      }
+      .sun-phase-sunset_2.sun-beams {
+        background: conic-gradient(from 180deg at 50% 12%,
+          transparent 126deg,
+          rgba(228, 156, 116, 0.12) 138deg,
+          transparent 148deg,
+          rgba(190, 128, 156, 0.11) 164deg,
+          transparent 176deg,
+          rgba(214, 144, 126, 0.12) 192deg,
+          transparent 204deg,
+          rgba(140, 152, 192, 0.11) 220deg,
           transparent 234deg);
       }
 
@@ -26474,7 +26592,7 @@ class PrismEnergyCard extends HTMLElement {
         }
         .color-inactive { color: rgba(255, 255, 255, 0.35); }
 
-        /* Custom pill breathe � uses --pill-r/g/b set on .pill-icon */
+        /* Custom pill breathe ? uses --pill-r/g/b set on .pill-icon */
         @keyframes custom-pill-glow-breathe {
           0%, 100% {
             box-shadow:
@@ -26796,7 +26914,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.3 %c Manual sun phases + house-facing rays `,
+  `%c PRISM-ENERGY %c v1.5.4 %c 8 sun phases + center-aimed rays `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
