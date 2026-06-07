@@ -9,7 +9,7 @@
  * - Day/Night transitions with house dimming
  * - Sunrise/Sunset effects
  * 
- * @version 1.5.4
+ * @version 1.5.5
  * @author BangerTech
  */
 
@@ -378,7 +378,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "grid_power",
-          label: "Grid Power – combined (optional if import/export set; +import, -export)",
+          label: "Grid Power - combined (optional if import/export set; +import, -export)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -399,7 +399,7 @@ class PrismEnergyCard extends HTMLElement {
         },
         {
           name: "battery_power",
-          label: "Battery Power – combined (optional if charge/discharge set; +discharge, -charge)",
+          label: "Battery Power - combined (optional if charge/discharge set; +discharge, -charge)",
           selector: { entity: { domain: "sensor" } }
         },
         {
@@ -867,7 +867,7 @@ class PrismEnergyCard extends HTMLElement {
                 },
                 {
                   name: "custom_pill_1_label",
-                  label: "Label (optional, e.g. 'Außen')",
+                  label: "Label (optional, e.g. 'Aussen')",
                   selector: { text: {} }
                 },
                 {
@@ -1716,7 +1716,7 @@ class PrismEnergyCard extends HTMLElement {
   _getCustomPillValue(entityId) {
     if (!entityId || !this._hass) return { value: '', unit: '' };
     const stateObj = this._hass.states[entityId];
-    if (!stateObj) return { value: '—', unit: '' };
+    if (!stateObj) return { value: '-', unit: '' };
     return {
       value: stateObj.state,
       unit: stateObj.attributes?.unit_of_measurement || ''
@@ -1870,9 +1870,9 @@ class PrismEnergyCard extends HTMLElement {
   }
 
   _getEntityDisplayState(entityId) {
-    if (!entityId || !this._hass) return '—';
+    if (!entityId || !this._hass) return '-';
     const stateObj = this._hass.states[entityId];
-    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return '—';
+    if (!stateObj || stateObj.state === 'unavailable' || stateObj.state === 'unknown') return '-';
     return stateObj.state;
   }
 
@@ -2445,8 +2445,8 @@ class PrismEnergyCard extends HTMLElement {
     const labels = isGerman ? {
       'sunny': 'Sonnig',
       'clear': 'Klar',
-      'cloudy': 'Bewölkt',
-      'partlycloudy': 'Teilweise bewölkt',
+      'cloudy': 'Bewoelkt',
+      'partlycloudy': 'Teilweise bewoelkt',
       'rainy': 'Regen',
       'snowy': 'Schnee',
       'hail': 'Hagel',
@@ -2677,7 +2677,8 @@ class PrismEnergyCard extends HTMLElement {
     const sunPhase = weatherData.sunPhase || (isNight ? 'night' : 'day');
     const sunX = `${10 + sunProgress * 80}%`;
     // Rotate rays so they always point toward the house center (~55% x)
-    const beamAngle = (0.5 - sunProgress) * 34; // left sun => tilt right, right sun => tilt left
+    // (sign intentionally flipped to match the visual orientation of the conic beam mask)
+    const beamAngle = (sunProgress - 0.5) * 34; // left sun => tilt right, middle => down, right sun => tilt left
 
     // Rain effect (optimized for mobile performance)
     if (weatherType === 'rainy' || weatherType === 'stormy') {
@@ -4540,7 +4541,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.4 %c 8 sun phases + center-aimed rays `,
+  `%c PRISM-ENERGY %c v1.5.5 %c Ray tilt fix + dash fallback cleanup `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'

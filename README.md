@@ -220,7 +220,7 @@ Prism Dashboard includes **29+ custom cards** (including dark and light theme va
 - **prism-vacuum-switchbot** – Specialized card for SwitchBot vacuums
 
 ### Energy
-- **prism-energy** (v1.5.4) – Energy flow card with flowing beam particles, color themes, glassmorphism pills, SOC-aware battery/EV icons with red→green gradient, rich weather effects (dynamic sun path with 8 daytime palettes, manual phase override, center-aimed rays, rain, snow, hail, wind, fog, storms, clouds) with manual override, 10 generic entity-driven overlays, polished cloud/night/snow visuals, two extra pills, and 8 custom pills with tap actions
+- **prism-energy** (v1.5.5) – Energy flow card with flowing beam particles, color themes, glassmorphism pills, SOC-aware battery/EV icons with red→green gradient, rich weather effects (dynamic sun path with 8 daytime palettes, manual phase override, correctly directed sun rays, rain, snow, hail, wind, fog, storms, clouds) with manual override, 10 generic entity-driven overlays, polished cloud/night/snow visuals, two extra pills, and 8 custom pills with tap actions
 - **prism-energy-horizontal** – Horizontal energy flow layout
 
 ### 3D Printing
