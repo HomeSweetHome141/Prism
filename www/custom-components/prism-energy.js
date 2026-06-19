@@ -207,6 +207,13 @@ class PrismEnergyCard extends HTMLElement {
       manual_weather_day: "sunny",
       manual_weather_night: "clear",
       manual_weather_day_phase: "auto",
+      weather_cycle_button_show: false,
+      weather_cycle_button_icon: "mdi:weather-partly-cloudy",
+      weather_cycle_button_label: "Weather",
+      weather_cycle_button_show_label: true,
+      weather_cycle_button_top: 18,
+      weather_cycle_button_left: 88,
+      weather_cycle_button_scale: 1.0,
       // Solar modules (optional)
       solar_module1: "",
       solar_module1_name: "",
@@ -587,6 +594,55 @@ class PrismEnergyCard extends HTMLElement {
                 { value: "foggy", label: "Fog" },
                 { value: "windy", label: "Windy" }
               ] } }
+            },
+            { name: "", type: "divider" },
+            {
+              type: "expandable",
+              name: "",
+              title: "Manual Weather Cycle Button",
+              schema: [
+                {
+                  name: "weather_cycle_button_show",
+                  label: "Show cycle button",
+                  selector: { boolean: {} }
+                },
+                {
+                  name: "weather_cycle_button_icon",
+                  label: "Button icon",
+                  selector: { icon: {} }
+                },
+                {
+                  name: "weather_cycle_button_label",
+                  label: "Button label",
+                  selector: { text: {} }
+                },
+                {
+                  name: "weather_cycle_button_show_label",
+                  label: "Show button label",
+                  selector: { boolean: {} }
+                },
+                {
+                  type: "grid",
+                  name: "",
+                  schema: [
+                    {
+                      name: "weather_cycle_button_top",
+                      label: "Position top %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "weather_cycle_button_left",
+                      label: "Position left %",
+                      selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                    },
+                    {
+                      name: "weather_cycle_button_scale",
+                      label: "Button size",
+                      selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -1320,6 +1376,13 @@ class PrismEnergyCard extends HTMLElement {
       manual_weather_day: config.manual_weather_day || "sunny",
       manual_weather_night: config.manual_weather_night || "clear",
       manual_weather_day_phase: config.manual_weather_day_phase || "auto",
+      weather_cycle_button_show: config.weather_cycle_button_show === true,
+      weather_cycle_button_icon: config.weather_cycle_button_icon || "mdi:weather-partly-cloudy",
+      weather_cycle_button_label: config.weather_cycle_button_label || "Weather",
+      weather_cycle_button_show_label: config.weather_cycle_button_show_label !== false,
+      weather_cycle_button_top: config.weather_cycle_button_top ?? 18,
+      weather_cycle_button_left: config.weather_cycle_button_left ?? 88,
+      weather_cycle_button_scale: config.weather_cycle_button_scale ?? 1.0,
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -2179,6 +2242,13 @@ class PrismEnergyCard extends HTMLElement {
     this._listenersAttached = true;
 
     this.shadowRoot.addEventListener('click', (e) => {
+      const weatherCycleButton = e.target.closest('[data-weather-cycle]');
+      if (weatherCycleButton) {
+        e.stopPropagation();
+        this._cycleManualWeatherMode();
+        return;
+      }
+
       const customPill = e.target.closest('.pill[data-custom-pill]');
       if (customPill) {
         e.stopPropagation();
@@ -2484,6 +2554,98 @@ class PrismEnergyCard extends HTMLElement {
       return isNight ? 'Nacht' : 'Tag';
     }
     return isNight ? 'Night' : 'Day';
+  }
+
+  _getManualWeatherCycleOptions() {
+    return [
+      { mode: 'auto', label: 'Auto', icon: 'mdi:weather-sunny-alert' },
+      { mode: 'day', weather: 'sunny', label: 'Sunny', icon: 'mdi:weather-sunny' },
+      { mode: 'day', weather: 'clear', label: 'Clear Day', icon: 'mdi:white-balance-sunny' },
+      { mode: 'day', weather: 'partlycloudy', label: 'Partly Cloudy', icon: 'mdi:weather-partly-cloudy' },
+      { mode: 'day', weather: 'cloudy', label: 'Cloudy', icon: 'mdi:weather-cloudy' },
+      { mode: 'day', weather: 'rainy', label: 'Rain', icon: 'mdi:weather-rainy' },
+      { mode: 'day', weather: 'stormy', label: 'Storm', icon: 'mdi:weather-lightning' },
+      { mode: 'day', weather: 'snowy', label: 'Snow', icon: 'mdi:weather-snowy' },
+      { mode: 'day', weather: 'hail', label: 'Hail', icon: 'mdi:weather-hail' },
+      { mode: 'day', weather: 'foggy', label: 'Fog', icon: 'mdi:weather-fog' },
+      { mode: 'day', weather: 'windy', label: 'Windy', icon: 'mdi:weather-windy' },
+      { mode: 'night', weather: 'clear', label: 'Clear Night', icon: 'mdi:weather-night' },
+      { mode: 'night', weather: 'partlycloudy', label: 'Night Clouds', icon: 'mdi:weather-night-partly-cloudy' },
+      { mode: 'night', weather: 'cloudy', label: 'Cloudy Night', icon: 'mdi:weather-cloudy' },
+      { mode: 'night', weather: 'rainy', label: 'Night Rain', icon: 'mdi:weather-rainy' },
+      { mode: 'night', weather: 'stormy', label: 'Night Storm', icon: 'mdi:weather-lightning' },
+      { mode: 'night', weather: 'snowy', label: 'Night Snow', icon: 'mdi:weather-snowy' },
+      { mode: 'night', weather: 'hail', label: 'Night Hail', icon: 'mdi:weather-hail' },
+      { mode: 'night', weather: 'foggy', label: 'Night Fog', icon: 'mdi:weather-fog' },
+      { mode: 'night', weather: 'windy', label: 'Night Wind', icon: 'mdi:weather-windy' }
+    ];
+  }
+
+  _getCurrentManualWeatherCycleIndex(options = this._getManualWeatherCycleOptions()) {
+    const mode = this._config.manual_weather_mode || 'auto';
+    if (mode === 'day') {
+      const weather = this._config.manual_weather_day || 'sunny';
+      return Math.max(0, options.findIndex((option) => option.mode === 'day' && option.weather === weather));
+    }
+    if (mode === 'night') {
+      const weather = this._config.manual_weather_night || 'clear';
+      return Math.max(0, options.findIndex((option) => option.mode === 'night' && option.weather === weather));
+    }
+    return 0;
+  }
+
+  _getCurrentManualWeatherCycleOption() {
+    const options = this._getManualWeatherCycleOptions();
+    return options[this._getCurrentManualWeatherCycleIndex(options)] || options[0];
+  }
+
+  _cycleManualWeatherMode() {
+    const options = this._getManualWeatherCycleOptions();
+    const next = options[(this._getCurrentManualWeatherCycleIndex(options) + 1) % options.length];
+
+    this._config.enable_weather_effects = true;
+    this._config.manual_weather_mode = next.mode;
+    if (next.mode === 'day') {
+      this._config.manual_weather_day = next.weather;
+    } else if (next.mode === 'night') {
+      this._config.manual_weather_night = next.weather;
+    }
+    this._lastWeatherKey = null;
+    this._fireConfigChanged();
+    this.render();
+  }
+
+  _fireConfigChanged() {
+    this.dispatchEvent(new CustomEvent('config-changed', {
+      detail: { config: { ...this._config } },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  _renderWeatherCycleButton() {
+    if (!this._config.weather_cycle_button_show) return '';
+
+    const current = this._getCurrentManualWeatherCycleOption();
+    const icon = this._config.weather_cycle_button_icon || current.icon || 'mdi:weather-partly-cloudy';
+    const label = this._config.weather_cycle_button_label || 'Weather';
+    const value = current.mode === 'auto' ? current.label : current.label;
+    const showLabel = this._config.weather_cycle_button_show_label !== false;
+    const top = this._config.weather_cycle_button_top ?? 18;
+    const left = this._config.weather_cycle_button_left ?? 88;
+    const scale = this._config.weather_cycle_button_scale ?? 1.0;
+
+    return `
+      <div class="pill pill-weather-cycle" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-weather-cycle>
+        <div class="pill-icon bg-weather-cycle">
+          <ha-icon icon="${icon}" class="color-weather-cycle"></ha-icon>
+        </div>
+        <div class="pill-content">
+          <span class="pill-val">${value}</span>
+          ${showLabel && label ? `<span class="pill-label">${label}</span>` : ''}
+        </div>
+      </div>
+    `;
   }
 
   // Compute daytime sun position (0..1 = left..right) and a detailed 8-phase sun palette
@@ -4042,11 +4204,13 @@ class PrismEnergyCard extends HTMLElement {
         }
         
         .pill[data-entity],
-        .pill[data-custom-pill] {
+        .pill[data-custom-pill],
+        .pill[data-weather-cycle] {
           cursor: pointer;
         }
         
-        .pill[data-entity]:active {
+        .pill[data-entity]:active,
+        .pill[data-weather-cycle]:active {
           transform: translate(-50%, -50%) scale(calc(var(--pill-scale) * 0.97));
         }
         
@@ -4212,6 +4376,12 @@ class PrismEnergyCard extends HTMLElement {
           box-shadow: 0 0 8px rgba(${rgbStr.ev}, 0.3);
         }
         .color-ev { color: ${colors.ev}; }
+
+        .bg-weather-cycle {
+          background: rgba(96, 165, 250, 0.16);
+          box-shadow: 0 0 10px rgba(96, 165, 250, 0.34);
+        }
+        .color-weather-cycle { color: #93c5fd; }
         
         .bg-inactive {
           background: rgba(255, 255, 255, 0.03);
@@ -4448,6 +4618,7 @@ class PrismEnergyCard extends HTMLElement {
           ${this._renderAllOverlays()}
           ${this._renderStatusPill()}
           ${this._renderExtraPills()}
+          ${this._renderWeatherCycleButton()}
           ${this._renderCustomPills()}
         </div>
 
@@ -4541,7 +4712,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.5 %c Ray tilt fix + dash fallback cleanup `,
+  `%c PRISM-ENERGY %c v1.6.0 %c Manual weather cycle button `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
