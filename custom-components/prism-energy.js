@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
  * Designed for OpenEMS/Fenecon integration
