@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
  * Designed for OpenEMS/Fenecon integration
@@ -4712,7 +4712,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.5.5 %c Ray tilt fix + dash fallback cleanup `,
+  `%c PRISM-ENERGY %c v1.6.0 %c Manual weather cycle button `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
