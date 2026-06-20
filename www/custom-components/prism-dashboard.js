@@ -24830,9 +24830,6 @@ class PrismEnergyCard extends HTMLElement {
         <!-- Hidden reference path for particle motion -->
         <path id="${pathId}" d="${path}" fill="none" stroke="none" />
 
-        <!-- Background track (pulsing, async) -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
-        
         <!-- Glowing animated beam with SVG filter -->
         <path d="${path}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#strokeGlow)" />
@@ -26505,19 +26502,6 @@ class PrismEnergyCard extends HTMLElement {
           100% {
             stroke-dashoffset: 100;
           }
-        }
-        
-        @keyframes track-pulse {
-          0%, 100% {
-            stroke-opacity: 0.18;
-          }
-          50% {
-            stroke-opacity: 0.06;
-          }
-        }
-        
-        .flow-track {
-          animation: track-pulse 2.2s ease-in-out infinite;
         }
         
         .flow-beam {
