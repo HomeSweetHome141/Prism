@@ -206,17 +206,6 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: false,
       weather_entity: "",
       cloud_coverage_entity: "",
-      manual_weather_mode: "auto",
-      manual_weather_day: "sunny",
-      manual_weather_night: "clear",
-      manual_weather_day_phase: "auto",
-      weather_cycle_button_show: false,
-      weather_cycle_button_icon: "mdi:weather-partly-cloudy",
-      weather_cycle_button_label: "Weather",
-      weather_cycle_button_show_label: true,
-      weather_cycle_button_top: 18,
-      weather_cycle_button_left: 88,
-      weather_cycle_button_scale: 1.0,
       // Solar modules (optional)
       solar_module1: "",
       solar_module1_name: "",
@@ -674,6 +663,43 @@ class PrismEnergyCard extends HTMLElement {
                   ]
                 }
               ]
+            }
+          ]
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "✨ Beam & Particle Effects",
+          schema: [
+            {
+              name: "beam_color",
+              label: "Beam color",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "beam_size",
+              label: "Beam width",
+              selector: { number: { min: 0.2, max: 5, step: 0.1, mode: "box" } }
+            },
+            {
+              name: "beam_speed",
+              label: "Beam animation duration (seconds)",
+              selector: { number: { min: 0.5, max: 10, step: 0.1, mode: "box", unit_of_measurement: "s" } }
+            },
+            {
+              name: "particle_color",
+              label: "Particle color",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "particle_size",
+              label: "Particle size",
+              selector: { number: { min: 1, max: 10, step: 0.5, mode: "box" } }
+            },
+            {
+              name: "particle_speed",
+              label: "Particle animation duration (seconds)",
+              selector: { number: { min: 0.5, max: 10, step: 0.1, mode: "box", unit_of_measurement: "s" } }
             }
           ]
         },
@@ -1405,18 +1431,6 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: config.enable_weather_effects || false,
       weather_entity: config.weather_entity || "",
       cloud_coverage_entity: config.cloud_coverage_entity || "",
-      // Manual weather override
-      manual_weather_mode: config.manual_weather_mode || "auto",
-      manual_weather_day: config.manual_weather_day || "sunny",
-      manual_weather_night: config.manual_weather_night || "clear",
-      manual_weather_day_phase: config.manual_weather_day_phase || "auto",
-      weather_cycle_button_show: config.weather_cycle_button_show === true,
-      weather_cycle_button_icon: config.weather_cycle_button_icon || "mdi:weather-partly-cloudy",
-      weather_cycle_button_label: config.weather_cycle_button_label || "Weather",
-      weather_cycle_button_show_label: config.weather_cycle_button_show_label !== false,
-      weather_cycle_button_top: config.weather_cycle_button_top ?? 18,
-      weather_cycle_button_left: config.weather_cycle_button_left ?? 88,
-      weather_cycle_button_scale: config.weather_cycle_button_scale ?? 1.0,
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -2468,40 +2482,21 @@ class PrismEnergyCard extends HTMLElement {
   _renderFlow(path, color, active, reverse = false, className = '') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
-    // Unique id for the motion reference path (className is unique per flow)
-    const pathId = `mp-${className || color.replace(/[^a-zA-Z0-9]/g, '')}`;
-
-    // Travelling particles (glowing dots that ride along the path)
-    // Slower than the beam dash so the balls drift gently
-    const dur = 12;
-    const particleCount = 3;
-    const motionDir = reverse ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '';
-    let particles = '';
-    for (let i = 0; i < particleCount; i++) {
-      const begin = `-${((dur / particleCount) * i).toFixed(2)}s`;
-      particles += `
-        <circle class="flow-particle" r="0.85" fill="${color}" filter="url(#softEdge)">
-          <animateMotion dur="${dur}s" repeatCount="indefinite" begin="${begin}" ${motionDir}>
-            <mpath href="#${pathId}" />
-          </animateMotion>
-        </circle>`;
-    }
-
+    // Create unique filter ID based on color
+    const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
+    
     return `
       <g class="flow-group ${className}" style="display: ${display};">
-        <!-- Hidden reference path for particle motion -->
-        <path id="${pathId}" d="${path}" fill="none" stroke="none" />
-
+        <!-- Background track (pulsing, async) -->
+        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
+        
         <!-- Glowing animated beam with SVG filter -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamSize}" stroke-opacity="0.9" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#strokeGlow)" />
         
         <!-- Bright core with soft edges -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-opacity="0.85" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamCoreSize}" stroke-opacity="0.85" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#softEdge)" />
-
-        <!-- Travelling energy particles -->
-        ${particles}
       </g>
     `;
   }
@@ -3888,8 +3883,7 @@ class PrismEnergyCard extends HTMLElement {
           justify-content: flex-start;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
-          border-radius: 16px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
         }
         
         .header-left {
@@ -4170,18 +4164,13 @@ class PrismEnergyCard extends HTMLElement {
         }
         
         .flow-beam {
-          stroke-dasharray: 12 88;
-          animation: flow-animation 6s linear infinite;
+          stroke-dasharray: 25 75;
+          animation: flow-animation 3s linear infinite;
         }
         
         .flow-beam.reverse {
-          stroke-dasharray: 12 88;
-          animation: flow-animation-reverse 6s linear infinite;
-        }
-
-        .flow-particle {
-          opacity: 0.9;
-          will-change: transform;
+          stroke-dasharray: 25 75;
+          animation: flow-animation-reverse 3s linear infinite;
         }
 
         /* Data Pills - Inlet Style */

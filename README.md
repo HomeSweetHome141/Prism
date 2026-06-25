@@ -207,6 +207,9 @@ Prism Dashboard includes **29+ custom cards** (including dark and light theme va
 - **prism-button** / **prism-button-light** – Entity button with brightness slider
 - **prism-led** / **prism-led-light** – RGB light with color wheel and temperature control
 
+### Actions
+- **prism-action-card** – Glass-style action card with a main start button and a separate number slider
+
 ### Covers & Shutters
 - **prism-shutter** / **prism-shutter-light** – Horizontal shutter card
 - **prism-shutter-vertical** / **prism-shutter-vertical-light** – Vertical shutter card
@@ -236,6 +239,24 @@ Prism Dashboard includes **29+ custom cards** (including dark and light theme va
 > 📚 **Full documentation** for all cards available in [Custom Components README](custom-components/README.md)
 
 ---
+
+## Example Prism Action Card
+
+```yaml
+- type: 'custom:prism-action-card'
+  entity: sensor.tesla_vehicle
+  name: Tesla Charge
+  icon: mdi:ev-station
+  active_color: '#00b8ff'
+  button_label: Start Charge
+  action_service: tesla.start_charge
+  action_service_data:
+    entity_id: sensor.tesla_vehicle
+  slider_entity: number.aurora_charge_current
+  slider_name: Charge Current
+  show_slider_value: true
+  show_state: true
+```
 
 ## Dashboard Configuration
 
