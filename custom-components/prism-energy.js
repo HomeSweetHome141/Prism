@@ -42,6 +42,13 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: false,
       weather_entity: "",
       cloud_coverage_entity: "",
+      // Beam + particle appearance
+      beam_color: "",
+      beam_size: 1.2,
+      beam_speed: 3,
+      particle_color: [255, 255, 255],
+      particle_size: 3,
+      particle_speed: 3,
       // Solar modules (optional)
       solar_module1: "",
       solar_module1_name: "",
@@ -220,6 +227,43 @@ class PrismEnergyCard extends HTMLElement {
               name: "max_consumption",
               label: "Max Consumption (Watts)",
               selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
+            }
+          ]
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "✨ Beam & Particle Effects",
+          schema: [
+            {
+              name: "beam_color",
+              label: "Beam color",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "beam_size",
+              label: "Beam width",
+              selector: { number: { min: 0.2, max: 5, step: 0.1, mode: "box" } }
+            },
+            {
+              name: "beam_speed",
+              label: "Beam animation duration (seconds)",
+              selector: { number: { min: 0.5, max: 10, step: 0.1, mode: "box", unit_of_measurement: "s" } }
+            },
+            {
+              name: "particle_color",
+              label: "Particle color",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "particle_size",
+              label: "Particle size",
+              selector: { number: { min: 1, max: 10, step: 0.5, mode: "box" } }
+            },
+            {
+              name: "particle_speed",
+              label: "Particle animation duration (seconds)",
+              selector: { number: { min: 0.5, max: 10, step: 0.1, mode: "box", unit_of_measurement: "s" } }
             }
           ]
         },
@@ -574,6 +618,12 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: config.enable_weather_effects || false,
       weather_entity: config.weather_entity || "",
       cloud_coverage_entity: config.cloud_coverage_entity || "",
+      beam_color: config.beam_color || "",
+      beam_size: config.beam_size ?? 1.2,
+      beam_speed: config.beam_speed ?? 3,
+      particle_color: config.particle_color || [255, 255, 255],
+      particle_size: config.particle_size ?? 3,
+      particle_speed: config.particle_speed ?? 3,
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -1178,21 +1228,45 @@ class PrismEnergyCard extends HTMLElement {
   _renderFlow(path, color, active, reverse = false, className = '') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
+    const beamColor = Array.isArray(this._config.beam_color) && this._config.beam_color.length === 3
+      ? `rgb(${this._config.beam_color.join(',')})`
+      : color;
+    const beamSize = this._config.beam_size ?? 1.2;
+    const beamCoreSize = Math.max(0.2, beamSize * 0.5);
+    const particleColor = Array.isArray(this._config.particle_color) && this._config.particle_color.length === 3
+      ? `rgb(${this._config.particle_color.join(',')})`
+      : 'rgba(255,255,255,0.9)';
+    const particleSize = this._config.particle_size ?? 3;
+    const particleSpeed = this._config.particle_speed ?? 3;
+    const pathId = `flow-path-${className}`;
     // Create unique filter ID based on color
     const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
     
     return `
       <g class="flow-group ${className}" style="display: ${display};">
         <!-- Background track (pulsing, async) -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
+        <path id="${pathId}" d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
         
         <!-- Glowing animated beam with SVG filter -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamSize}" stroke-opacity="0.9" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#strokeGlow)" />
         
         <!-- Bright core with soft edges -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-opacity="0.85" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamCoreSize}" stroke-opacity="0.85" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#softEdge)" />
+        
+        ${active ? `
+          <circle class="flow-particle" r="${particleSize}" fill="${particleColor}" opacity="0.95">
+            <animateMotion dur="${particleSpeed}s" repeatCount="indefinite" rotate="auto">
+              <mpath xlink:href="#${pathId}" />
+            </animateMotion>
+          </circle>
+          <circle class="flow-particle" r="${particleSize}" fill="${particleColor}" opacity="0.7">
+            <animateMotion begin="${particleSpeed / 2}s" dur="${particleSpeed}s" repeatCount="indefinite" rotate="auto">
+              <mpath xlink:href="#${pathId}" />
+            </animateMotion>
+          </circle>
+        ` : ''}
       </g>
     `;
   }
@@ -1885,6 +1959,10 @@ class PrismEnergyCard extends HTMLElement {
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          --beam-animation-duration: ${this._config.beam_speed}s;
+          --beam-stroke-width: ${this._config.beam_size};
+          --particle-size: ${this._config.particle_size};
+          --particle-animation-duration: ${this._config.particle_speed}s;
           background: rgba(30, 32, 36, 0.8);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
@@ -1916,7 +1994,7 @@ class PrismEnergyCard extends HTMLElement {
           justify-content: space-between;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+          background: transparent;
         }
         
         .header-left {
@@ -2189,17 +2267,17 @@ class PrismEnergyCard extends HTMLElement {
         }
         
         .flow-track {
-          animation: track-pulse 2.2s ease-in-out infinite;
+          animation: track-pulse 1.6s ease-in-out infinite;
         }
         
         .flow-beam {
           stroke-dasharray: 25 75;
-          animation: flow-animation 3s linear infinite;
+          animation: flow-animation var(--beam-animation-duration, 3s) linear infinite;
         }
         
         .flow-beam.reverse {
           stroke-dasharray: 25 75;
-          animation: flow-animation-reverse 3s linear infinite;
+          animation: flow-animation-reverse var(--beam-animation-duration, 3s) linear infinite;
         }
 
         /* Data Pills - Inlet Style */
