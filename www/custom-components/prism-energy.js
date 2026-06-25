@@ -384,6 +384,11 @@ class PrismEnergyCard extends HTMLElement {
                   name: "header_scale",
                   label: "Header size",
                   selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                },
+                {
+                  name: "header_transparent",
+                  label: "Transparent header background",
+                  selector: { boolean: {} }
                 }
               ]
             }
@@ -1427,6 +1432,7 @@ class PrismEnergyCard extends HTMLElement {
       header_top: config.header_top ?? 5,
       header_left: config.header_left ?? 12,
       header_scale: config.header_scale ?? 1.0,
+      header_transparent: config.header_transparent === true,
       solar_power: config.solar_power || "",
       grid_power: config.grid_power || "",
       grid_import: config.grid_import || "",
@@ -3952,7 +3958,7 @@ class PrismEnergyCard extends HTMLElement {
           justify-content: flex-start;
           align-items: center;
           z-index: 50;
-          background: transparent;
+          background: ${this._config.header_transparent ? 'transparent' : 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)'};
           border: none;
           box-shadow: none;
           backdrop-filter: none;

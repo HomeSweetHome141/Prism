@@ -366,6 +366,11 @@ class PrismEnergyCard extends HTMLElement {
                   name: "header_scale",
                   label: "Header size",
                   selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                },
+                {
+                  name: "header_transparent",
+                  label: "Transparent header background",
+                  selector: { boolean: {} }
                 }
               ]
             }
@@ -1409,6 +1414,7 @@ class PrismEnergyCard extends HTMLElement {
       header_top: config.header_top ?? 5,
       header_left: config.header_left ?? 12,
       header_scale: config.header_scale ?? 1.0,
+      header_transparent: config.header_transparent === true,
       solar_power: config.solar_power || "",
       grid_power: config.grid_power || "",
       grid_import: config.grid_import || "",
@@ -2484,6 +2490,16 @@ class PrismEnergyCard extends HTMLElement {
     const display = active ? 'block' : 'none';
     // Create unique filter ID based on color
     const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
+    const beamColor = Array.isArray(this._config.beam_color) && this._config.beam_color.length === 3
+      ? `rgb(${this._config.beam_color.join(',')})`
+      : color;
+    const beamSize = this._config.beam_size ?? 1.2;
+    const beamCoreSize = Math.max(0.2, beamSize * 0.5);
+    const particleColor = Array.isArray(this._config.particle_color) && this._config.particle_color.length === 3
+      ? `rgb(${this._config.particle_color.join(',')})`
+      : 'rgba(255,255,255,0.9)';
+    const particleSize = this._config.particle_size ?? 3;
+    const particleSpeed = this._config.particle_speed ?? 3;
     
     return `
       <g class="flow-group ${className}" style="display: ${display};">
@@ -3883,7 +3899,10 @@ class PrismEnergyCard extends HTMLElement {
           justify-content: flex-start;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+          background: ${this._config.header_transparent ? 'transparent' : 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)'};
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
         }
         
         .header-left {
