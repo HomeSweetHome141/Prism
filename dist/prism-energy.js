@@ -1990,7 +1990,10 @@ class PrismEnergyCard extends HTMLElement {
           justify-content: space-between;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
         }
         
         .header-left {
