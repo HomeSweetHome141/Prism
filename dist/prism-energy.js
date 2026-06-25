@@ -184,6 +184,9 @@ class PrismEnergyCard extends HTMLElement {
       name: "Energy Monitor",
       show_header_icon: true,
       header_icon: "mdi:solar-power-variant",
+      header_top: 5,
+      header_left: 12,
+      header_scale: 1.0,
       solar_power: "",
       grid_power: "",
       grid_import: "",
@@ -348,6 +351,34 @@ class PrismEnergyCard extends HTMLElement {
               name: "header_icon",
               label: "Header icon",
               selector: { icon: {} }
+            }
+          ]
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "Header Position",
+          schema: [
+            {
+              type: "grid",
+              name: "",
+              schema: [
+                {
+                  name: "header_top",
+                  label: "Position top %",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "header_left",
+                  label: "Position left %",
+                  selector: { number: { min: 0, max: 100, step: 1, mode: "box" } }
+                },
+                {
+                  name: "header_scale",
+                  label: "Header size",
+                  selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                }
+              ]
             }
           ]
         },
@@ -1349,6 +1380,9 @@ class PrismEnergyCard extends HTMLElement {
       name: config.name || "Energy Monitor",
       show_header_icon: config.show_header_icon !== false,
       header_icon: config.header_icon || "mdi:solar-power-variant",
+      header_top: config.header_top ?? 5,
+      header_left: config.header_left ?? 12,
+      header_scale: config.header_scale ?? 1.0,
       solar_power: config.solar_power || "",
       grid_power: config.grid_power || "",
       grid_import: config.grid_import || "",
@@ -2439,7 +2473,7 @@ class PrismEnergyCard extends HTMLElement {
 
     // Travelling particles (glowing dots that ride along the path)
     // Slower than the beam dash so the balls drift gently
-    const dur = 6;
+    const dur = 12;
     const particleCount = 3;
     const motionDir = reverse ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '';
     let particles = '';
@@ -2625,22 +2659,21 @@ class PrismEnergyCard extends HTMLElement {
 
     const current = this._getCurrentManualWeatherCycleOption();
     const icon = this._config.weather_cycle_button_icon || current.icon || 'mdi:weather-partly-cloudy';
-    const label = this._config.weather_cycle_button_label || 'Weather';
-    const value = current.mode === 'auto' ? current.label : current.label;
-    const showLabel = this._config.weather_cycle_button_show_label !== false;
+    const isAuto = current.mode === 'auto';
     const top = this._config.weather_cycle_button_top ?? 18;
     const left = this._config.weather_cycle_button_left ?? 88;
     const scale = this._config.weather_cycle_button_scale ?? 1.0;
+    const iconOnlyClass = isAuto ? '' : ' pill-icon-only';
 
     return `
-      <div class="pill pill-weather-cycle" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-weather-cycle>
+      <div class="pill pill-weather-cycle${iconOnlyClass}" style="top: ${top}%; left: ${left}%; --pill-scale: ${scale};" data-weather-cycle>
         <div class="pill-icon bg-weather-cycle">
           <ha-icon icon="${icon}" class="color-weather-cycle"></ha-icon>
         </div>
+        ${isAuto ? `
         <div class="pill-content">
-          <span class="pill-val">${value}</span>
-          ${showLabel && label ? `<span class="pill-label">${label}</span>` : ''}
-        </div>
+          <span class="pill-val">${current.label}</span>
+        </div>` : ''}
       </div>
     `;
   }
@@ -3844,15 +3877,19 @@ class PrismEnergyCard extends HTMLElement {
         /* Header - must be above weather animations */
         .header {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          padding: 20px 24px;
+          top: ${this._config.header_top ?? 5}%;
+          left: ${this._config.header_left ?? 12}%;
+          transform: translate(-50%, 0) scale(${this._config.header_scale ?? 1});
+          transform-origin: top center;
+          width: max-content;
+          max-width: calc(100% - 16px);
+          padding: 12px 16px;
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-start;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+          background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
+          border-radius: 16px;
         }
         
         .header-left {
@@ -4133,13 +4170,13 @@ class PrismEnergyCard extends HTMLElement {
         }
         
         .flow-beam {
-          stroke-dasharray: 25 75;
-          animation: flow-animation 3s linear infinite;
+          stroke-dasharray: 12 88;
+          animation: flow-animation 6s linear infinite;
         }
         
         .flow-beam.reverse {
-          stroke-dasharray: 25 75;
-          animation: flow-animation-reverse 3s linear infinite;
+          stroke-dasharray: 12 88;
+          animation: flow-animation-reverse 6s linear infinite;
         }
 
         .flow-particle {
@@ -4366,6 +4403,11 @@ class PrismEnergyCard extends HTMLElement {
           box-shadow: 0 0 10px rgba(96, 165, 250, 0.34);
         }
         .color-weather-cycle { color: #93c5fd; }
+
+        .pill-weather-cycle.pill-icon-only {
+          padding: 6px;
+          gap: 0;
+        }
         
         .bg-inactive {
           background: rgba(255, 255, 255, 0.03);
@@ -4696,7 +4738,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.6.0 %c Manual weather cycle button `,
+  `%c PRISM-ENERGY %c v1.6.1 %c Icon-only weather pill, slower beams, movable header `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
