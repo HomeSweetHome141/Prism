@@ -206,6 +206,24 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: false,
       weather_entity: "",
       cloud_coverage_entity: "",
+      manual_weather_mode: "auto",
+      manual_weather_day: "sunny",
+      manual_weather_night: "clear",
+      manual_weather_day_phase: "auto",
+      weather_cycle_button_show: false,
+      weather_cycle_button_icon: "mdi:weather-partly-cloudy",
+      weather_cycle_button_label: "Weather",
+      weather_cycle_button_show_label: true,
+      weather_cycle_button_top: 18,
+      weather_cycle_button_left: 88,
+      weather_cycle_button_scale: 1.0,
+      // Beam + particle appearance
+      beam_color: "",
+      beam_size: 1.2,
+      beam_speed: 3,
+      particle_color: [255, 255, 255],
+      particle_size: 3,
+      particle_speed: 3,
       // Solar modules (optional)
       solar_module1: "",
       solar_module1_name: "",
@@ -711,29 +729,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "Maximum Values for Progress Bars",
-          schema: [
-            {
-              name: "max_solar_power",
-              label: "Max Solar Power (Watts) - e.g. 10000 for 10kW",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            },
-            {
-              name: "max_grid_power",
-              label: "Max Grid Power (Watts)",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            },
-            {
-              name: "max_consumption",
-              label: "Max Consumption (Watts)",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            }
-          ]
-        },
-        {
-          type: "expandable",
-          name: "",
-          title: "Solar Modules (optional - for individual display)",
+          title: "☀️ Solar Modules (optional - for individual display)",
           schema: [
             {
               name: "solar_module1",
@@ -1437,6 +1433,24 @@ class PrismEnergyCard extends HTMLElement {
       enable_weather_effects: config.enable_weather_effects || false,
       weather_entity: config.weather_entity || "",
       cloud_coverage_entity: config.cloud_coverage_entity || "",
+      // Manual weather override
+      manual_weather_mode: config.manual_weather_mode || "auto",
+      manual_weather_day: config.manual_weather_day || "sunny",
+      manual_weather_night: config.manual_weather_night || "clear",
+      manual_weather_day_phase: config.manual_weather_day_phase || "auto",
+      weather_cycle_button_show: config.weather_cycle_button_show === true,
+      weather_cycle_button_icon: config.weather_cycle_button_icon || "mdi:weather-partly-cloudy",
+      weather_cycle_button_label: config.weather_cycle_button_label || "Weather",
+      weather_cycle_button_show_label: config.weather_cycle_button_show_label !== false,
+      weather_cycle_button_top: config.weather_cycle_button_top ?? 18,
+      weather_cycle_button_left: config.weather_cycle_button_left ?? 88,
+      weather_cycle_button_scale: config.weather_cycle_button_scale ?? 1.0,
+      beam_color: config.beam_color || "",
+      beam_size: config.beam_size ?? 1.2,
+      beam_speed: config.beam_speed ?? 3,
+      particle_color: config.particle_color || [255, 255, 255],
+      particle_size: config.particle_size ?? 3,
+      particle_speed: config.particle_speed ?? 3,
       // Solar modules
       solar_module1: config.solar_module1 || "",
       solar_module1_name: config.solar_module1_name || "Module 1",
@@ -2488,8 +2502,6 @@ class PrismEnergyCard extends HTMLElement {
   _renderFlow(path, color, active, reverse = false, className = '') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
-    // Create unique filter ID based on color
-    const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
     const beamColor = Array.isArray(this._config.beam_color) && this._config.beam_color.length === 3
       ? `rgb(${this._config.beam_color.join(',')})`
       : color;
@@ -2500,11 +2512,12 @@ class PrismEnergyCard extends HTMLElement {
       : 'rgba(255,255,255,0.9)';
     const particleSize = this._config.particle_size ?? 3;
     const particleSpeed = this._config.particle_speed ?? 3;
+    const pathId = `flow-path-${className}`;
     
     return `
       <g class="flow-group ${className}" style="display: ${display};">
         <!-- Background track (pulsing, async) -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
+        <path id="${pathId}" d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-linecap="round" class="flow-track" />
         
         <!-- Glowing animated beam with SVG filter -->
         <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamSize}" stroke-opacity="0.9" stroke-linecap="round" 
@@ -2513,8 +2526,20 @@ class PrismEnergyCard extends HTMLElement {
         <!-- Bright core with soft edges -->
         <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="${beamCoreSize}" stroke-opacity="0.85" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#softEdge)" />
+        
+        ${active ? `
+          <circle class="flow-particle" r="${particleSize}" fill="${particleColor}" opacity="0.95">
+            <animateMotion dur="${particleSpeed}s" repeatCount="indefinite" rotate="auto">
+              <mpath xlink:href="#${pathId}" />
+            </animateMotion>
+          </circle>
+          <circle class="flow-particle" r="${particleSize}" fill="${particleColor}" opacity="0.7">
+            <animateMotion begin="${particleSpeed / 2}s" dur="${particleSpeed}s" repeatCount="indefinite" rotate="auto">
+              <mpath xlink:href="#${pathId}" />
+            </animateMotion>
+          </circle>
+        ` : ''}
       </g>
-    `;
   }
 
   // Get weather icon based on conditions
@@ -3865,6 +3890,10 @@ class PrismEnergyCard extends HTMLElement {
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          --beam-animation-duration: ${this._config.beam_speed}s;
+          --beam-stroke-width: ${this._config.beam_size};
+          --particle-size: ${this._config.particle_size};
+          --particle-animation-duration: ${this._config.particle_speed}s;
           background: rgba(30, 32, 36, 0.8);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
@@ -4182,14 +4211,32 @@ class PrismEnergyCard extends HTMLElement {
           }
         }
         
+        @keyframes track-pulse {
+          0%, 100% {
+            stroke-opacity: 0.18;
+          }
+          50% {
+            stroke-opacity: 0.06;
+          }
+        }
+        
+        .flow-track {
+          animation: track-pulse 1.6s ease-in-out infinite;
+        }
+        
         .flow-beam {
           stroke-dasharray: 25 75;
-          animation: flow-animation 3s linear infinite;
+          animation: flow-animation var(--beam-animation-duration, 3s) linear infinite;
         }
         
         .flow-beam.reverse {
           stroke-dasharray: 25 75;
-          animation: flow-animation-reverse 3s linear infinite;
+          animation: flow-animation-reverse var(--beam-animation-duration, 3s) linear infinite;
+        }
+
+        .flow-particle {
+          opacity: 0.9;
+          will-change: transform;
         }
 
         /* Data Pills - Inlet Style */

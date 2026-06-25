@@ -729,29 +729,7 @@ class PrismEnergyCard extends HTMLElement {
         {
           type: "expandable",
           name: "",
-          title: "📊 Maximum Values for Progress Bars",
-          schema: [
-            {
-              name: "max_solar_power",
-              label: "Max Solar Power (Watts) - e.g. 10000 for 10kW",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            },
-            {
-              name: "max_grid_power",
-              label: "Max Grid Power (Watts)",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            },
-            {
-              name: "max_consumption",
-              label: "Max Consumption (Watts)",
-              selector: { number: { min: 1000, max: 100000, step: 100, mode: "box", unit_of_measurement: "W" } }
-            }
-          ]
-        },
-        {
-          type: "expandable",
-          name: "",
-          title: "Solar Modules (optional - for individual display)",
+          title: "☀️ Solar Modules (optional - for individual display)",
           schema: [
             {
               name: "solar_module1",
@@ -2535,8 +2513,6 @@ class PrismEnergyCard extends HTMLElement {
     const particleSize = this._config.particle_size ?? 3;
     const particleSpeed = this._config.particle_speed ?? 3;
     const pathId = `flow-path-${className}`;
-    // Create unique filter ID based on color
-    const filterId = `glow-${color.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
     
     return `
       <g class="flow-group ${className}" style="display: ${display};">
@@ -2564,7 +2540,6 @@ class PrismEnergyCard extends HTMLElement {
           </circle>
         ` : ''}
       </g>
-    `;
   }
 
   // Get weather icon based on conditions
@@ -3847,10 +3822,6 @@ class PrismEnergyCard extends HTMLElement {
     const isBatteryDischarging = this._isBatteryDischarging();
     const isEvCharging = evPower > 50;
 
-    const particleColor = Array.isArray(this._config.particle_color) && this._config.particle_color.length === 3
-      ? `rgb(${this._config.particle_color.join(',')})`
-      : 'rgba(255,255,255,0.9)';
-
     // Battery icon based on SOC
     const batteryIcon = this._batteryIcon(batterySoc, isBatteryCharging);
 
@@ -3923,7 +3894,6 @@ class PrismEnergyCard extends HTMLElement {
           --beam-stroke-width: ${this._config.beam_size};
           --particle-size: ${this._config.particle_size};
           --particle-animation-duration: ${this._config.particle_speed}s;
-          --particle-color: ${particleColor};
           background: rgba(30, 32, 36, 0.8);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
@@ -4625,7 +4595,7 @@ class PrismEnergyCard extends HTMLElement {
           <div class="bottom-gradient"></div>
 
           <!-- SVG Flows -->
-          <svg class="svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns:xlink="http://www.w3.org/1999/xlink">
+          <svg class="svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
             <!-- Glow filter definition -->
             <defs>
               <!-- Stroke Glow Filter (optimized: 2 blur instead of 3, ~39% faster) -->
