@@ -1995,6 +1995,9 @@ class PrismEnergyCard extends HTMLElement {
           align-items: center;
           z-index: 50;
           background: transparent;
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
         }
         
         .header-left {
