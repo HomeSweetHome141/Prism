@@ -22559,6 +22559,8 @@ class PrismEnergyCard extends HTMLElement {
       header_top: 5,
       header_left: 12,
       header_scale: 1.0,
+      flow_beam_speed: 6,
+      flow_particle_speed: 12,
       solar_power: "",
       grid_power: "",
       grid_import: "",
@@ -22775,6 +22777,33 @@ class PrismEnergyCard extends HTMLElement {
             { value: "mono", label: "Mono" },
             { value: "ocean", label: "Ocean" }
           ] } }
+        },
+        {
+          type: "expandable",
+          name: "",
+          title: "Energy Flow Animation",
+          schema: [
+            {
+              name: "flow_beam_color",
+              label: "Beam color (optional, uses theme flow colors if empty)",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "flow_particle_color",
+              label: "Particle color (optional, uses theme flow colors if empty)",
+              selector: { color_rgb: {} }
+            },
+            {
+              name: "flow_beam_speed",
+              label: "Beam speed (seconds per cycle, lower = faster)",
+              selector: { number: { min: 1, max: 30, step: 0.5, mode: "box" } }
+            },
+            {
+              name: "flow_particle_speed",
+              label: "Particle speed (seconds per path, lower = faster)",
+              selector: { number: { min: 1, max: 30, step: 0.5, mode: "box" } }
+            }
+          ]
         },
         {
           name: "",
@@ -23755,6 +23784,10 @@ class PrismEnergyCard extends HTMLElement {
       header_top: config.header_top ?? 5,
       header_left: config.header_left ?? 12,
       header_scale: config.header_scale ?? 1.0,
+      flow_beam_color: config.flow_beam_color || null,
+      flow_particle_color: config.flow_particle_color || null,
+      flow_beam_speed: config.flow_beam_speed ?? 6,
+      flow_particle_speed: config.flow_particle_speed ?? 12,
       solar_power: config.solar_power || "",
       grid_power: config.grid_power || "",
       grid_import: config.grid_import || "",
@@ -24836,23 +24869,34 @@ class PrismEnergyCard extends HTMLElement {
     return `${Math.round(absWatts)} W`;
   }
 
+  _getFlowColorOverride(override, fallback) {
+    if (Array.isArray(override) && override.length >= 3) {
+      return `rgb(${override[0]}, ${override[1]}, ${override[2]})`;
+    }
+    return fallback;
+  }
+
   // Generate animated flow path with real SVG filter glow + travelling particles
   _renderFlow(path, color, active, reverse = false, className = '') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
+    const beamColor = this._getFlowColorOverride(this._config.flow_beam_color, color);
+    const particleColor = this._getFlowColorOverride(this._config.flow_particle_color, color);
+    const beamDur = this._config.flow_beam_speed ?? 6;
+    const particleDur = this._config.flow_particle_speed ?? 12;
     // Unique id for the motion reference path (className is unique per flow)
     const pathId = `mp-${className || color.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     // Travelling particles (glowing dots that ride along the path)
     // Slower than the beam dash so the balls drift gently
-    const dur = 12;
+    const dur = particleDur;
     const particleCount = 3;
     const motionDir = reverse ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '';
     let particles = '';
     for (let i = 0; i < particleCount; i++) {
       const begin = `-${((dur / particleCount) * i).toFixed(2)}s`;
       particles += `
-        <circle class="flow-particle" r="0.85" fill="${color}" filter="url(#softEdge)">
+        <circle class="flow-particle" r="0.85" fill="${particleColor}" filter="url(#softEdge)">
           <animateMotion dur="${dur}s" repeatCount="indefinite" begin="${begin}" ${motionDir}>
             <mpath href="#${pathId}" />
           </animateMotion>
@@ -24865,11 +24909,11 @@ class PrismEnergyCard extends HTMLElement {
         <path id="${pathId}" d="${path}" fill="none" stroke="none" />
 
         <!-- Glowing animated beam with SVG filter -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="1.2" stroke-opacity="0.9" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#strokeGlow)" />
         
         <!-- Bright core with soft edges -->
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="0.5" stroke-opacity="0.85" stroke-linecap="round" 
+        <path d="${path}" fill="none" stroke="${beamColor}" stroke-width="0.5" stroke-opacity="0.85" stroke-linecap="round" 
               class="flow-beam ${direction}" filter="url(#softEdge)" />
 
         <!-- Travelling energy particles -->
@@ -26255,13 +26299,13 @@ class PrismEnergyCard extends HTMLElement {
           transform-origin: top center;
           width: max-content;
           max-width: calc(100% - 16px);
-          padding: 12px 16px;
+          padding: 0;
           display: flex;
           justify-content: flex-start;
           align-items: center;
           z-index: 50;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
-          border-radius: 16px;
+          background: transparent;
+          border-radius: 0;
         }
         
         .header-left {
@@ -26376,7 +26420,7 @@ class PrismEnergyCard extends HTMLElement {
         /* Responsive Header */
         @container energy-card (max-width: 400px) {
           .header {
-            padding: 16px 18px;
+            padding: 0;
           }
           .icon-circle {
             width: 34px;
@@ -26409,7 +26453,7 @@ class PrismEnergyCard extends HTMLElement {
         
         @container energy-card (max-width: 320px) {
           .header {
-            padding: 12px 14px;
+            padding: 0;
           }
           .header-left {
             gap: 8px;
@@ -26511,6 +26555,7 @@ class PrismEnergyCard extends HTMLElement {
           height: 100%;
           pointer-events: none;
           z-index: 10;
+          --flow-beam-duration: ${this._config.flow_beam_speed ?? 6}s;
         }
 
         /* Animations */
@@ -26543,12 +26588,12 @@ class PrismEnergyCard extends HTMLElement {
         
         .flow-beam {
           stroke-dasharray: 12 88;
-          animation: flow-animation 6s linear infinite;
+          animation: flow-animation var(--flow-beam-duration, 6s) linear infinite;
         }
         
         .flow-beam.reverse {
           stroke-dasharray: 12 88;
-          animation: flow-animation-reverse 6s linear infinite;
+          animation: flow-animation-reverse var(--flow-beam-duration, 6s) linear infinite;
         }
 
         .flow-particle {
@@ -27110,7 +27155,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.6.1 %c Icon-only weather pill, slower beams, movable header `,
+  `%c PRISM-ENERGY %c v1.6.2 %c Clear header, flow color and speed controls `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
