@@ -44,7 +44,7 @@ After installing via HACS:
    - **Type:** `JavaScript Module`
 4. Restart Home Assistant
 
-> **Images:** HACS downloads the full repository into `/config/www/community/Prism/`. Card images are served from `/hacsfiles/Prism/images/` (or `/local/community/Prism/images/`). After updating, use **Redownload** in HACS to refresh all files including images.
+> **Images:** HACS installs from the `dist/` folder (not repo root). Images land at `/config/www/community/Prism/images/`. If you previously installed when only the JS was copied, **uninstall and reinstall** once in HACS (or delete `/config/www/community/Prism/` and redownload). Verify: `/local/community/Prism/images/prism-energy-home.png`
 
 > **✨ All 29 cards included!** One file contains all dark and light theme cards with automatic cache updates.
 
