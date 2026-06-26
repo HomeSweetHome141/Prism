@@ -187,6 +187,7 @@ class PrismEnergyCard extends HTMLElement {
       header_top: 5,
       header_left: 12,
       header_scale: 1.0,
+      header_lock_position: false,
       flow_beam_speed: 6,
       flow_particle_speed: 12,
       solar_power: "",
@@ -379,6 +380,12 @@ class PrismEnergyCard extends HTMLElement {
                   name: "header_scale",
                   label: "Header size",
                   selector: { number: { min: 0.5, max: 2.0, step: 0.1, mode: "box" } }
+                },
+                {
+                  name: "header_lock_position",
+                  label: "Lock header position (left anchor, prevents weather text shift)",
+                  default: false,
+                  selector: { boolean: {} }
                 }
               ]
             }
@@ -1487,6 +1494,7 @@ class PrismEnergyCard extends HTMLElement {
       header_top: config.header_top ?? 5,
       header_left: config.header_left ?? 12,
       header_scale: config.header_scale ?? 1.0,
+      header_lock_position: config.header_lock_position === true,
       flow_beam_color: config.flow_beam_color || null,
       flow_particle_color: config.flow_particle_color || null,
       flow_solar_beam_color: config.flow_solar_beam_color || null,
@@ -4016,8 +4024,8 @@ class PrismEnergyCard extends HTMLElement {
           position: absolute;
           top: ${this._config.header_top ?? 5}%;
           left: ${this._config.header_left ?? 12}%;
-          transform: translate(-50%, 0) scale(${this._config.header_scale ?? 1});
-          transform-origin: top center;
+          transform: ${this._config.header_lock_position ? `translate(0, 0) scale(${this._config.header_scale ?? 1})` : `translate(-50%, 0) scale(${this._config.header_scale ?? 1})`};
+          transform-origin: ${this._config.header_lock_position ? 'top left' : 'top center'};
           width: max-content;
           max-width: calc(100% - 16px);
           padding: 0;
@@ -4876,7 +4884,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.6.3 %c Per-flow beam and particle color controls `,
+  `%c PRISM-ENERGY %c v1.6.4 %c Header position lock (left anchor) `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
