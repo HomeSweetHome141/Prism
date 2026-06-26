@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
  * Designed for OpenEMS/Fenecon integration
@@ -412,16 +412,6 @@ class PrismEnergyCard extends HTMLElement {
           title: "Energy Flow Animation",
           schema: [
             {
-              name: "flow_beam_color",
-              label: "Beam color (optional, uses theme flow colors if empty)",
-              selector: { color_rgb: {} }
-            },
-            {
-              name: "flow_particle_color",
-              label: "Particle color (optional, uses theme flow colors if empty)",
-              selector: { color_rgb: {} }
-            },
-            {
               name: "flow_beam_speed",
               label: "Beam speed (seconds per cycle, lower = faster)",
               selector: { number: { min: 1, max: 30, step: 0.5, mode: "box" } }
@@ -430,6 +420,91 @@ class PrismEnergyCard extends HTMLElement {
               name: "flow_particle_speed",
               label: "Particle speed (seconds per path, lower = faster)",
               selector: { number: { min: 1, max: 30, step: 0.5, mode: "box" } }
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Solar Flow Colors",
+              schema: [
+                {
+                  name: "flow_solar_beam_color",
+                  label: "Solar beam color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "flow_solar_particle_color",
+                  label: "Solar particle color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Grid Flow Colors",
+              schema: [
+                {
+                  name: "flow_grid_beam_color",
+                  label: "Grid beam color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "flow_grid_particle_color",
+                  label: "Grid particle color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Battery Flow Colors",
+              schema: [
+                {
+                  name: "flow_battery_beam_color",
+                  label: "Battery beam color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "flow_battery_particle_color",
+                  label: "Battery particle color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "EV Flow Colors",
+              schema: [
+                {
+                  name: "flow_ev_beam_color",
+                  label: "EV beam color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "flow_ev_particle_color",
+                  label: "EV particle color (optional, uses theme if empty)",
+                  selector: { color_rgb: {} }
+                }
+              ]
+            },
+            {
+              type: "expandable",
+              name: "",
+              title: "Global Flow Color Override",
+              schema: [
+                {
+                  name: "flow_beam_color",
+                  label: "All beams (optional, used when per-flow beam color is empty)",
+                  selector: { color_rgb: {} }
+                },
+                {
+                  name: "flow_particle_color",
+                  label: "All particles (optional, used when per-flow particle color is empty)",
+                  selector: { color_rgb: {} }
+                }
+              ]
             }
           ]
         },
@@ -1414,6 +1489,14 @@ class PrismEnergyCard extends HTMLElement {
       header_scale: config.header_scale ?? 1.0,
       flow_beam_color: config.flow_beam_color || null,
       flow_particle_color: config.flow_particle_color || null,
+      flow_solar_beam_color: config.flow_solar_beam_color || null,
+      flow_solar_particle_color: config.flow_solar_particle_color || null,
+      flow_grid_beam_color: config.flow_grid_beam_color || null,
+      flow_grid_particle_color: config.flow_grid_particle_color || null,
+      flow_battery_beam_color: config.flow_battery_beam_color || null,
+      flow_battery_particle_color: config.flow_battery_particle_color || null,
+      flow_ev_beam_color: config.flow_ev_beam_color || null,
+      flow_ev_particle_color: config.flow_ev_particle_color || null,
       flow_beam_speed: config.flow_beam_speed ?? 6,
       flow_particle_speed: config.flow_particle_speed ?? 12,
       solar_power: config.solar_power || "",
@@ -2504,12 +2587,22 @@ class PrismEnergyCard extends HTMLElement {
     return fallback;
   }
 
+  _getFlowColors(flowType, themeColor) {
+    const perBeam = this._config[`flow_${flowType}_beam_color`];
+    const perParticle = this._config[`flow_${flowType}_particle_color`];
+    const beamOverride = perBeam || this._config.flow_beam_color;
+    const particleOverride = perParticle || this._config.flow_particle_color;
+    return {
+      beam: this._getFlowColorOverride(beamOverride, themeColor),
+      particle: this._getFlowColorOverride(particleOverride, themeColor)
+    };
+  }
+
   // Generate animated flow path with real SVG filter glow + travelling particles
-  _renderFlow(path, color, active, reverse = false, className = '') {
+  _renderFlow(path, color, active, reverse = false, className = '', flowType = 'solar') {
     const direction = reverse ? 'reverse' : '';
     const display = active ? 'block' : 'none';
-    const beamColor = this._getFlowColorOverride(this._config.flow_beam_color, color);
-    const particleColor = this._getFlowColorOverride(this._config.flow_particle_color, color);
+    const { beam: beamColor, particle: particleColor } = this._getFlowColors(flowType, color);
     const beamDur = this._config.flow_beam_speed ?? 6;
     const particleDur = this._config.flow_particle_speed ?? 12;
     // Unique id for the motion reference path (className is unique per flow)
@@ -4608,20 +4701,20 @@ class PrismEnergyCard extends HTMLElement {
             </defs>
             
             <!-- Solar Flows -->
-            ${this._renderFlow(paths.solarToHome, colors.solar, isSolarActive && homeConsumption > 0, false, 'flow-solar-home')}
-            ${hasBattery ? this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery') : ''}
-            ${this._renderFlow(paths.solarToGrid, colors.solar, isSolarActive && isGridExport, false, 'flow-solar-grid')}
+            ${this._renderFlow(paths.solarToHome, colors.solar, isSolarActive && homeConsumption > 0, false, 'flow-solar-home', 'solar')}
+            ${hasBattery ? this._renderFlow(paths.solarToBattery, colors.solar, isSolarActive && isBatteryCharging, false, 'flow-solar-battery', 'solar') : ''}
+            ${this._renderFlow(paths.solarToGrid, colors.solar, isSolarActive && isGridExport, false, 'flow-solar-grid', 'solar')}
 
             <!-- Grid Flows -->
-            ${this._renderFlow(paths.gridToHome, colors.grid, isGridImport, false, 'flow-grid-home')}
-            ${hasBattery ? this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery') : ''}
+            ${this._renderFlow(paths.gridToHome, colors.grid, isGridImport, false, 'flow-grid-home', 'grid')}
+            ${hasBattery ? this._renderFlow(paths.gridToBattery, colors.grid, isGridImport && isBatteryCharging, false, 'flow-grid-battery', 'grid') : ''}
 
             <!-- Battery Flows -->
-            ${hasBattery ? this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home') : ''}
-            ${hasBattery ? this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid') : ''}
+            ${hasBattery ? this._renderFlow(paths.batteryToHome, colors.battery, isBatteryDischarging, false, 'flow-battery-home', 'battery') : ''}
+            ${hasBattery ? this._renderFlow(paths.batteryToGrid, colors.battery, isBatteryDischarging && isGridExport, false, 'flow-battery-grid', 'battery') : ''}
 
             <!-- EV Flow (sub-load of home) -->
-            ${hasEV ? this._renderFlow(paths.homeToEv, colors.ev, isEvCharging, false, 'flow-home-ev') : ''}
+            ${hasEV ? this._renderFlow(paths.homeToEv, colors.ev, isEvCharging, false, 'flow-home-ev', 'ev') : ''}
           </svg>
 
           <!-- Solar Pill (Top - Roof) - Clickable for history -->
@@ -4783,7 +4876,7 @@ window.customCards.push({
 });
 
 console.info(
-  `%c PRISM-ENERGY %c v1.6.2 %c Clear header, flow color and speed controls `,
+  `%c PRISM-ENERGY %c v1.6.3 %c Per-flow beam and particle color controls `,
   'background: #F59E0B; color: black; font-weight: bold; padding: 2px 6px; border-radius: 4px 0 0 4px;',
   'background: #1e2024; color: white; font-weight: bold; padding: 2px 6px;',
   'background: #3B82F6; color: white; font-weight: bold; padding: 2px 6px; border-radius: 0 4px 4px 0;'
