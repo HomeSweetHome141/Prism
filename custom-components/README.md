@@ -370,7 +370,7 @@ A 3D printer card for **Moonraker/Klipper** printers (Voron, Prusa, RatRig, Ende
   printer: <device_id>          # Moonraker/Klipper printer device
   name: Voron 2.4
   camera_entity: camera.printer_webcam  # Optional
-  image: /hacsfiles/Prism-Dashboard/images/printer-blank.jpg  # Optional
+  image: /hacsfiles/Prism/images/printer-blank.jpg  # Optional
 ```
 
 **Supported Integrations:**
@@ -432,7 +432,7 @@ A Bambu Lab 3D printer card with AMS (Automatic Material System) support, glassm
 - type: custom:prism-bambu
   printer: <device_id>  # Bambu Lab printer device (e.g., from Device Registry)
   name: Bambu Lab Printer  # Optional: Custom Name
-  image: /hacsfiles/Prism-Dashboard/images/printer-blank.jpg  # Optional: Printer image (default is automatically used)
+  image: /hacsfiles/Prism/images/printer-blank.jpg  # Optional: Printer image (default is automatically used)
 ```
 
 **Advanced Configuration (with AMS, Camera and Notifications):**
@@ -533,7 +533,7 @@ The card reads AMS data from tray entities (`sensor.*_slot_1`, `sensor.*_slot_2`
 
 **Images:**
 - The default printer image (`printer-blank.jpg`) is automatically installed with HACS
-- Default path: `/hacsfiles/Prism-Dashboard/images/printer-blank.jpg`
+- Default path: `/hacsfiles/Prism/images/printer-blank.jpg`
 - You can specify a custom image path in the `image` field if needed
 - The card supports both `.png` and `.jpg` formats
 4. As a last fallback, a printer icon is displayed
@@ -1006,7 +1006,7 @@ ev_soc_entity: sensor.my_ev_soc  # Optional EV % overlay
 status_entity: sensor.energy_autarky  # Optional status pill (or legacy autarky: same key)
 status_icon: mdi:leaf
 status_label: Autarky
-image: /hacsfiles/Prism-Dashboard/images/prism-energy-home.png  # Optional, default is automatically used
+image: /hacsfiles/Prism/images/prism-energy-home.png  # Optional, default is automatically used
 # Optional split sensors (instead of signed grid_power / battery_power)
 # grid_import: sensor.grid_import_power
 # grid_export: sensor.grid_export_power
@@ -1137,7 +1137,7 @@ The default image is already included. However, you can also use your own image:
 
 **HACS Installation:**
 ```
-/hacsfiles/Prism-Dashboard/images/prism-energy-home.png
+/hacsfiles/Prism/images/prism-energy-home.png
 ```
 
 **Manual Installation:**
@@ -1187,7 +1187,7 @@ battery_power: sensor.fems79420_sum_essdischargepower
 home_consumption: sensor.fems79420_sum_consumptionactivepower
 ev_power: sensor.fems79420_evcs0_chargepower  # Optional
 autarky: sensor.energy_autarky  # Optional
-image: /hacsfiles/Prism-Dashboard/images/prism-energy-home.png  # Optional, default is automatically used
+image: /hacsfiles/Prism/images/prism-energy-home.png  # Optional, default is automatically used
 show_details: true  # Show details panel on right
 ```
 

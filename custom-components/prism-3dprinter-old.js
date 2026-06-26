@@ -11,7 +11,7 @@ class Prism3DPrinterCard extends HTMLElement {
       entity: "sensor.3d_printer",
       name: "3D Printer",
       camera_entity: "camera.3d_printer",
-      image: "/local/community/Prism-Dashboard/images/printer-blank.jpg",
+      image: "/local/community/Prism/images/printer-blank.jpg",
     };
   }
 
@@ -97,7 +97,7 @@ class Prism3DPrinterCard extends HTMLElement {
     const cameraImage =
       cameraState?.attributes?.entity_picture ||
       cfg.image ||
-      "/local/community/Prism-Dashboard/images/printer-blank.jpg";
+      "/local/community/Prism/images/printer-blank.jpg";
 
     const isLightOn = attr.light === "on" || true; // keep bright look by default
 

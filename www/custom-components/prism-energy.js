@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Prism Energy Card
  * A glassmorphism energy flow card for Home Assistant
  * Designed for OpenEMS/Fenecon integration
@@ -200,7 +200,7 @@ class PrismEnergyCard extends HTMLElement {
       home_consumption: "",
       ev_power: "",
       autarky: "",
-      image: "/local/community/Prism-Dashboard/images/prism-energy-home.png",
+      image: "/local/community/Prism/images/prism-energy-home.png",
       max_solar_power: 10000,
       max_grid_power: 10000,
       max_consumption: 10000,
@@ -1427,7 +1427,7 @@ class PrismEnergyCard extends HTMLElement {
       home_consumption: config.home_consumption || "",
       ev_power: config.ev_power || "",
       autarky: config.autarky || "",
-      image: config.image || "/local/community/Prism-Dashboard/images/prism-energy-home.png",
+      image: config.image || "/local/community/Prism/images/prism-energy-home.png",
       show_details: config.show_details !== false,
       color_theme: config.color_theme || "default",
       // Max values for progress bars (in Watts)

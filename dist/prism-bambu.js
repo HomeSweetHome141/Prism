@@ -62,7 +62,7 @@ class PrismBambuCard extends HTMLElement {
       printer: '',
       name: 'Bambu Lab Printer',
       camera_entity: '',
-      image: '/local/community/Prism-Dashboard/images/printer-blank.jpg'
+      image: '/local/community/Prism/images/printer-blank.jpg'
     };
   }
 
@@ -4275,7 +4275,7 @@ class PrismBambuCard extends HTMLElement {
     
     // Image path - use configured image or default
     // Supports both .png and .jpg formats
-    const printerImg = this.config.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg';
+    const printerImg = this.config.image || '/local/community/Prism/images/printer-blank.jpg';
 
     // AMS Data - collect from all configured AMS devices
     const amsUnits = this._getAllAmsUnits();
@@ -4376,7 +4376,7 @@ class PrismBambuCard extends HTMLElement {
       name: this.config?.name || 'Bambu Lab Printer',
       cameraEntity: null,
       cameraImage: null,
-      printerImg: this.config?.image || '/local/community/Prism-Dashboard/images/printer-blank.jpg',
+      printerImg: this.config?.image || '/local/community/Prism/images/printer-blank.jpg',
       coverImageEntity: null,
       coverImageUrl: null,
       showCoverImage: false,

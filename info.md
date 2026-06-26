@@ -40,9 +40,11 @@ After installing via HACS:
 1. Go to **Settings → Dashboards → Resources** (top right)
 2. Click **"Add Resource"**
 3. Add the bundled file:
-   - **URL:** `/hacsfiles/Prism-Dashboard/prism-dashboard.js`
+   - **URL:** `/hacsfiles/Prism/prism-dashboard.js`
    - **Type:** `JavaScript Module`
 4. Restart Home Assistant
+
+> **Images:** HACS downloads the full repository into `/config/www/community/Prism/`. Card images are served from `/hacsfiles/Prism/images/` (or `/local/community/Prism/images/`). After updating, use **Redownload** in HACS to refresh all files including images.
 
 > **✨ All 29 cards included!** One file contains all dark and light theme cards with automatic cache updates.
 
